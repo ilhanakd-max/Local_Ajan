@@ -91,6 +91,15 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
     if gpu_mode and profile.num_ctx > 8192:
         profile = profile.model_copy(update={"num_ctx": 8192})
     
+    LOGO = r"""
+    __          __          __   ___    _           
+   / /   ____  / /______ _ / /  /   |  (_)___ _____ 
+  / /   / __ \/ //_/ __ `/ /   / /| | / / __ `/ __ \
+ / /___/ /_/ / ,< / /_/ / /   / ___ |/ / /_/ / / / /
+/_____/\____/_/|_|\__,_/_/   /_/  |_/ /\__,_/_/ /_/ 
+                                 /___/              
+"""
+    console.print(f"[bold cyan]{LOGO}[/bold cyan]")
     console.print(f"[bold blue]Lokal Ajan[/bold blue] başlatılıyor...")
     if gpu_mode:
         console.print("[bold yellow]⚡ Hızlı GPU Modu Aktif (8K Context / %100 GPU Hızlandırma)[/bold yellow]")
@@ -198,6 +207,15 @@ def run_cmd(
     if gpu_mode and profile.num_ctx > 8192:
         profile = profile.model_copy(update={"num_ctx": 8192})
     
+    LOGO = r"""
+    __          __          __   ___    _           
+   / /   ____  / /______ _ / /  /   |  (_)___ _____ 
+  / /   / __ \/ //_/ __ `/ /   / /| | / / __ `/ __ \
+ / /___/ /_/ / ,< / /_/ / /   / ___ |/ / /_/ / / / /
+/_____/\____/_/|_|\__,_/_/   /_/  |_/ /\__,_/_/ /_/ 
+                                 /___/              
+"""
+    console.print(f"[bold cyan]{LOGO}[/bold cyan]")
     console.print(f"[bold blue]Görev Başlatılıyor:[/bold blue] {prompt}")
     if gpu_mode:
         console.print("[bold yellow]⚡ Hızlı GPU Modu Aktif (8K Context / %100 GPU)[/bold yellow]")

@@ -23,4 +23,5 @@ dev = [
 
 [project.scripts]
 lokal-ajan = "lokal_ajan.cli:app"
+localajan = "lokal_ajan.cli:app"
 
