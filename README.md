@@ -44,6 +44,16 @@ pipx install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.
 
 Kurulum bittikten sonra terminalinizden herhangi bir klasörde sadece `localajan` yazarak uygulamayı başlatabilirsiniz.
 
+### 🗑️ Kaldırma (Uninstall)
+Uygulamayı sistemden tamamen silmek için kurulum yönteminize göre şu komutu kullanın:
+```bash
+# Pipx ile kurduysanız:
+pipx uninstall lokal-ajan
+
+# Pip ile kurduysanız:
+pip uninstall lokal-ajan
+```
+
 ### 🛠 Kullanım
 
 Etkileşimli (Sohbet) Modu Başlatmak İçin:
@@ -96,6 +106,16 @@ pipx install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.
 *(If you don't want to use `pipx`, you can also use standard pip: `pip install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip`)*
 
 After installation, you can launch the app from anywhere by typing `localajan` in your terminal.
+
+### 🗑️ Uninstallation
+To completely remove the application from your system, use the corresponding command based on your installation method:
+```bash
+# If installed via Pipx:
+pipx uninstall lokal-ajan
+
+# If installed via Pip:
+pip uninstall lokal-ajan
+```
 
 ### 🛠 Usage
 
