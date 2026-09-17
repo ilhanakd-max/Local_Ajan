@@ -1,0 +1,2 @@
+[console_scripts]
+lokal-ajan = lokal_ajan.cli:app

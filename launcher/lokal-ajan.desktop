@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Lokal Ajan
+Comment=Ollama tabanlı lokal agentic CLI başlatıcı
+Exec=python3 /opt/lokal-ajan/launcher/launcher.py
+Icon=utilities-terminal
+Terminal=false
+Categories=Development;Utility;
