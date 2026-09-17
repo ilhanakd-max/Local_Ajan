@@ -16,11 +16,7 @@ def switch_model(agent: AgentLoop, config):
     from lokal_ajan.llm.ollama_client import list_ollama_models
     
     external_models = [
-        "groq/openai/gpt-oss-120b",
-        "groq/openai/gpt-oss-20b",
-        "groq/qwen/qwen3.8-27b",
         "openrouter/free",
-        "ninerouter/free-model",
     ]
     
     ollama_models = list_ollama_models(config.ollama_host) or []
@@ -53,6 +49,10 @@ def switch_model(agent: AgentLoop, config):
         console.print(f"[dim]Zaten [green]{new_model}[/green] kullanılıyor.[/dim]")
         return
     
+    if new_model.startswith("openrouter/"):
+        ensure_openrouter_key(config)
+        agent.config.openrouter_api_key = config.openrouter_api_key
+        
     new_profile = get_profile_for_model(new_model)
     agent.update_model(new_model, new_profile)
     
@@ -83,9 +83,32 @@ def get_user_prompt(prompt_label: str = "Sen") -> str:
     except (EOFError, KeyboardInterrupt):
         raise
 
+def ensure_openrouter_key(config):
+    if not config.openrouter_api_key:
+        console.print("\n[bold yellow]OpenRouter API Anahtarı Gerekli![/bold yellow]")
+        console.print("İlk kullanımınız olduğu için ücretsiz modelleri kullanabilmek adına API anahtarı gereklidir.")
+        console.print("Anahtarınızı ücretsiz olarak şu adresten alabilirsiniz: [cyan]https://openrouter.ai/keys[/cyan]")
+        key = Prompt.ask("Lütfen OpenRouter API anahtarınızı yapıştırın")
+        if key.strip():
+            config.openrouter_api_key = key.strip()
+            from lokal_ajan.config import CONFIG_PATH
+            try:
+                CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+                with open(CONFIG_PATH, "a", encoding="utf-8") as f:
+                    f.write(f'\nopenrouter_api_key = "{key.strip()}"\n')
+                console.print("[green]API anahtarı config dosyasına başarıyla kaydedildi![/green]\n")
+            except Exception as e:
+                console.print(f"[red]Anahtar kaydedilemedi: {e}[/red]\n")
+        else:
+            console.print("[red]Anahtar girilmedi. İşlem başarısız olabilir.[/red]\n")
+
 def start_interactive_session(model: str, workdir: str, worker_model: str = None, gpu_mode: bool = False):
     config = load_config()
     target_model = model or config.default_model
+    
+    if target_model.startswith("openrouter/") or (worker_model and worker_model.startswith("openrouter/")):
+        ensure_openrouter_key(config)
+        
     profile = get_profile_for_model(target_model)
     
     if gpu_mode and profile.num_ctx > 8192:
@@ -203,6 +226,10 @@ def run_cmd(
     """
     config = load_config()
     target_model = model or config.default_model
+    
+    if target_model.startswith("openrouter/") or (worker_model and worker_model.startswith("openrouter/")):
+        ensure_openrouter_key(config)
+        
     profile = get_profile_for_model(target_model)
     if gpu_mode and profile.num_ctx > 8192:
         profile = profile.model_copy(update={"num_ctx": 8192})
