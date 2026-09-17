@@ -22,21 +22,18 @@ Lokal Ajan, Ollama tabanlı lokal yapay zeka modelleriyle ve bulut sağlayıcıl
 - **Hızlı GPU Modu:** Küçük modelleri %100 GPU kapasitesine taşıyarak ve bağlam boyutunu 8K ile sınırlandırarak inanılmaz bir hız sağlar.
 - **Ponytail (Lazy Senior Dev) Modu:** Ajanı, sadece en gerekli ve en pratik değişiklikleri yapmaya zorlayan; gereksiz kodlamadan kaçınan "tembel ama tecrübeli yazılımcı" modudur.
 - **Güvenli Kum Havuzu (Sandbox):** Çalıştırdığı komutlar ve dosya değişiklikleri sadece sizin belirlediğiniz çalışma klasörüyle (workdir) sınırlandırılır. Dışarıya çıkamaz.
-- **GUI Başlatıcı:** Kodlarla uğraşmak istemediğinizde `Masaüstü Başlatıcısı` üzerinden model seçip çalışmanıza imkan tanır.
 - **Tam Otonom Tool Calling:** Dosya okuma/yazma, terminal komutu çalıştırma ve web araması yapma yeteneklerine sahiptir.
 
-### ⚡ Kurulum (Tek Satırla)
+### ⚡ Kurulum (Tek Satırla, Antivirüs Dostu)
 
-**Linux / macOS:**
+Lokal Ajan'ı sisteminize küresel bir komut satırı aracı (tıpkı `npm install -g` gibi) olarak kurmak için **pipx** kullanılması önerilir. Bu yöntem hem Windows hem de Linux'ta tamamen güvenlidir ve antivirüs uyarılarını engeller.
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ilhanakd-max/Local_Ajan/main/scripts/install.sh | bash
+# Eğer pipx yüklü değilse önce onu kurun (Windows: pip install pipx)
+pipx install git+https://github.com/ilhanakd-max/Local_Ajan.git
 ```
 
-**Windows (PowerShell):**
-```powershell
-powershell -c "irm https://raw.githubusercontent.com/ilhanakd-max/Local_Ajan/main/scripts/install.ps1 | iex"
-```
-*Kurulum bittikten sonra terminalinizi kapatıp açın ve `localajan` yazarak başlatın.*
+*Kurulum bittikten sonra terminalinizden herhangi bir klasörde sadece `localajan` yazarak uygulamayı başlatabilirsiniz.*
 
 ### 🛠 Kullanım
 
@@ -69,21 +66,17 @@ Local Agent (Lokal Ajan) is a terminal-based agentic CLI tool with powerful **to
 - **Fast GPU Mode:** Unlocks 100% GPU acceleration for tiny models by forcing an 8K context limit, drastically increasing token generation speed.
 - **Ponytail (Lazy Senior Dev) Mode:** Forces the AI to adopt a "lazy but experienced developer" persona—writing minimal code, avoiding over-engineering, and utilizing existing standard libraries instead of creating boilerplate.
 - **Secure Sandbox Engine:** The agent is strictly isolated. All file modifications and shell executions are sandboxed to the specified working directory (`workdir`) preventing unintended system modifications.
-- **GUI Launcher:** Includes a desktop launcher interface to easily select your AI model, worker model, and working directory without typing CLI arguments.
 - **Autonomous Tool Use:** The agent can autonomously read/write files, execute bash/powershell commands, and search for context.
 
-### ⚡ Quick Installation
+### ⚡ Quick Installation (Antivirus Safe)
 
-**Linux / macOS:**
+To install Local Agent globally as a standalone CLI tool (similar to `npm install -g`), we recommend using **pipx**. This method is completely safe on both Windows and Linux, entirely avoiding antivirus flags.
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ilhanakd-max/Local_Ajan/main/scripts/install.sh | bash
+# If you don't have pipx, install it first (Windows: pip install pipx)
+pipx install git+https://github.com/ilhanakd-max/Local_Ajan.git
 ```
-
-**Windows (PowerShell):**
-```powershell
-powershell -c "irm https://raw.githubusercontent.com/ilhanakd-max/Local_Ajan/main/scripts/install.ps1 | iex"
-```
-*After installation, restart your terminal and type `localajan` from anywhere.*
+*After installation, you can launch the app from anywhere by typing `localajan` in your terminal.*
 
 ### 🛠 Usage
 
