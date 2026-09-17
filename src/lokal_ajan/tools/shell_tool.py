@@ -3,12 +3,17 @@ from pydantic import BaseModel, Field
 from lokal_ajan.tools.base import BaseTool
 from lokal_ajan.tools.registry import registry
 
+import platform
+
+os_name = platform.system()
+cmd_type = "Windows CMD/PowerShell" if os_name == "Windows" else "Bash"
+
 class RunShellArgs(BaseModel):
-    command: str = Field(..., description="Bash command to run")
+    command: str = Field(..., description=f"{cmd_type} command to run")
 
 class RunShellTool(BaseTool):
     name = "run_shell"
-    description = "Runs a bash command in the workspace directory"
+    description = f"Runs a shell command in the workspace directory. Note: The operating system is {os_name}."
     args_schema = RunShellArgs
     requires_confirm = True
     

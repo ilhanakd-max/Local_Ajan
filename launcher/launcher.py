@@ -179,6 +179,8 @@ class LauncherApp:
             self.persist_current_state()
             
     def get_terminal_emulator(self):
+        if sys.platform == "win32":
+            return "cmd"
         terms = ["x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "xterm"]
         for t in terms:
             if subprocess.run(["which", t], capture_output=True).returncode == 0:
@@ -207,9 +209,13 @@ class LauncherApp:
         # Komut önizleme
         frame = tk.Frame(dlg, bg="#2d2d2d", bd=1, relief="solid")
         frame.pack(fill="x", padx=20, pady=(0, 16))
+        
+        is_win = sys.platform == "win32"
+        preview_text = f"cd {project_dir}\npowershell scripts\\install.ps1" if is_win else f"cd {project_dir}\nbash scripts/install.sh"
+        
         tk.Label(
             frame,
-            text=f"cd {project_dir}\nbash scripts/install.sh",
+            text=preview_text,
             bg="#2d2d2d", fg="#a8ff78",
             font=("Monospace", 9),
             justify="left",
@@ -221,17 +227,19 @@ class LauncherApp:
         def run_install():
             term = self.get_terminal_emulator()
             if not term:
-                messagebox.showerror("Hata", "Terminale emulator bulunamadı.\n"
-                                             "Lütfen terminali kendiniz açıp\n"
-                                             "scripts/install.sh çalıştırın.",
-                                     parent=dlg)
+                messagebox.showerror("Hata", "Terminal bulunamadı.", parent=dlg)
                 return
-            install_cmd = f'cd "{project_dir}" && bash scripts/install.sh'
+            
             try:
-                if term == "gnome-terminal":
-                    subprocess.Popen([term, "--", "bash", "-c", f"{install_cmd}; exec bash"])
+                if is_win:
+                    install_cmd = f'cd /d "{project_dir}" & powershell -ExecutionPolicy Bypass -File scripts\\install.ps1'
+                    subprocess.Popen(f'start cmd /k "{install_cmd}"', shell=True)
                 else:
-                    subprocess.Popen([term, "-e", f'bash -c \'{install_cmd}; exec bash\''])
+                    install_cmd = f'cd "{project_dir}" && bash scripts/install.sh'
+                    if term == "gnome-terminal":
+                        subprocess.Popen([term, "--", "bash", "-c", f"{install_cmd}; exec bash"])
+                    else:
+                        subprocess.Popen([term, "-e", f'bash -c \'{install_cmd}; exec bash\''])
                 dlg.destroy()
             except Exception as e:
                 messagebox.showerror("Hata", f"Terminal açılamadı: {e}", parent=dlg)
@@ -262,21 +270,22 @@ class LauncherApp:
             messagebox.showerror("Hata", "Sistemde desteklenen bir terminal bulunamadı.")
             return
             
-        # Proje dizini ve Python yollarını hesapla
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         src_dir = os.path.join(project_dir, "src")
-        venv_python = os.path.join(project_dir, ".venv", "bin", "python3")
         
-        # .venv varsa onun python'unu kullan; yoksa kurulum yapılmamış demektir.
+        is_win = sys.platform == "win32"
+        venv_python = os.path.join(project_dir, ".venv", "Scripts", "python.exe") if is_win else os.path.join(project_dir, ".venv", "bin", "python3")
+        
         if os.path.exists(venv_python):
             python_bin = venv_python
         else:
             self._show_install_dialog(project_dir)
             return
         
-        # PYTHONPATH ile src/ dizinini ekleyerek doğrudan modülü çalıştır.
-        # Tırnak işaretleri: model ve workdir'de boşluk olabilir.
-        cmd = f'PYTHONPATH="{src_dir}" "{python_bin}" -m lokal_ajan.cli --model "{model}" --workdir "{workdir}"'
+        if is_win:
+            cmd = f'set PYTHONPATH="{src_dir}" & "{python_bin}" -m lokal_ajan.cli --model "{model}" --workdir "{workdir}"'
+        else:
+            cmd = f'PYTHONPATH="{src_dir}" "{python_bin}" -m lokal_ajan.cli --model "{model}" --workdir "{workdir}"'
 
         if self.orchestrator_var.get():
             worker = self.worker_var.get()
@@ -285,15 +294,15 @@ class LauncherApp:
 
         if self.gpu_mode_var.get():
             cmd += ' --gpu-mode'
-
         
         try:
-            if term == "gnome-terminal":
-                subprocess.Popen([term, "--", "bash", "-c", f"{cmd}; exec bash"])
-            elif term == "xfce4-terminal":
-                subprocess.Popen([term, "-e", f'bash -c \'{cmd}; exec bash\''])
+            if is_win:
+                subprocess.Popen(f'start cmd /k "{cmd}"', shell=True)
             else:
-                subprocess.Popen([term, "-e", f'bash -c \'{cmd}; exec bash\''])
+                if term == "gnome-terminal":
+                    subprocess.Popen([term, "--", "bash", "-c", f"{cmd}; exec bash"])
+                else:
+                    subprocess.Popen([term, "-e", f'bash -c \'{cmd}; exec bash\''])
             self.root.destroy()
         except Exception as e:
             messagebox.showerror("Hata", f"Başlatılamadı: {e}")

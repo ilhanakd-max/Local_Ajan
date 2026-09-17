@@ -47,6 +47,30 @@ if ($ProfileContent -notmatch "function localajan") {
     Write-Host "✅ Kısayol zaten profilinizde mevcut."
 }
 
+Write-Host "🔍 Gereksinimler kontrol ediliyor..." -ForegroundColor Cyan
+
+if (-Not (Get-Command "rg" -ErrorAction SilentlyContinue)) {
+    Write-Host "⚠️ 'ripgrep' (rg) bulunamadı. Yükleniyor (winget)..." -ForegroundColor Yellow
+    if (Get-Command "winget" -ErrorAction SilentlyContinue) {
+        winget install BurntSushi.ripgrep.MSVC --accept-source-agreements --accept-package-agreements
+    } else {
+        Write-Host "Winget bulunamadı, ripgrep manuel kurulmalıdır." -ForegroundColor Red
+    }
+} else {
+    Write-Host "✅ ripgrep (rg) yüklü." -ForegroundColor Green
+}
+
+if (-Not (Get-Command "ollama" -ErrorAction SilentlyContinue)) {
+    Write-Host "⚠️ Ollama bulunamadı. Yükleniyor (winget)..." -ForegroundColor Yellow
+    if (Get-Command "winget" -ErrorAction SilentlyContinue) {
+        winget install Ollama.Ollama --accept-source-agreements --accept-package-agreements
+    } else {
+        Write-Host "Winget bulunamadı, Ollama manuel kurulmalıdır." -ForegroundColor Red
+    }
+} else {
+    Write-Host "✅ Ollama yüklü." -ForegroundColor Green
+}
+
 Write-Host "`n🎉 KURULUM BAŞARIYLA TAMAMLANDI! 🎉" -ForegroundColor Green
 Write-Host "👉 Yeni bir PowerShell penceresi açın veya şunu çalıştırın:"
 Write-Host "    . `$PROFILE"

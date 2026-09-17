@@ -49,14 +49,32 @@ if [ -f ~/.zshrc ]; then
     echo "alias localajan='$INSTALL_DIR/.venv/bin/python3 -m lokal_ajan.cli'" >> ~/.zshrc
 fi
 
+echo "🔍 Gereksinimler kontrol ediliyor..."
 if ! command -v rg &> /dev/null; then
-    echo "⚠️ Uyarı: 'ripgrep' (rg) bulunamadı. Kurmanız önerilir."
+    echo "⚠️ Uyarı: 'ripgrep' (rg) bulunamadı. Kuruluyor..."
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update && sudo apt-get install -y ripgrep
+    elif command -v dnf &> /dev/null; then
+        sudo dnf install -y ripgrep
+    elif command -v pacman &> /dev/null; then
+        sudo pacman -S --noconfirm ripgrep
+    else
+        echo "❌ Paket yöneticisi bulunamadı. Ripgrep'i manuel kurmalısınız."
+    fi
+else
+    echo "✅ ripgrep (rg) yüklü."
 fi
 
-if curl -s http://localhost:11434/api/tags &> /dev/null; then
-    echo "✅ Ollama servisi çalışıyor."
+if ! command -v ollama &> /dev/null; then
+    echo "⚠️ Uyarı: Ollama bulunamadı. Kuruluyor..."
+    curl -fsSL https://ollama.com/install.sh | sh
 else
-    echo "⚠️ Uyarı: Ollama servisi şu an yanıt vermiyor."
+    echo "✅ Ollama yüklü."
+    if curl -s http://localhost:11434/api/tags &> /dev/null; then
+        echo "✅ Ollama servisi çalışıyor."
+    else
+        echo "⚠️ Uyarı: Ollama servisi şu an yanıt vermiyor. Lütfen 'ollama serve' komutuyla başlatın."
+    fi
 fi
 
 echo ""
