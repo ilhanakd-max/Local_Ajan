@@ -1,37 +1,67 @@
 #!/bin/bash
+set -e
 
-echo "Lokal Ajan kuruluyor..."
+echo "🚀 Lokal Ajan kuruluyor..."
 
-# 1. Virtual Environment
+# Proje dizininde olup olmadığımızı kontrol et
+if [ ! -f "pyproject.toml" ]; then
+    echo "📦 GitHub'dan proje indiriliyor..."
+    INSTALL_DIR="$HOME/.lokal-ajan"
+    if [ -d "$INSTALL_DIR" ]; then
+        echo "🔄 Mevcut kurulum güncelleniyor..."
+        cd "$INSTALL_DIR"
+        git pull origin main
+    else
+        git clone https://github.com/ilhanakd-max/Local_Ajan.git "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
+    fi
+else
+    INSTALL_DIR="$(pwd)"
+fi
+
+echo "🐍 Python sanal ortamı oluşturuluyor..."
 if [ ! -d ".venv" ]; then
     python3 -m venv .venv
 fi
-source .venv/bin/activate
 
-# 2. Kurulum
+source .venv/bin/activate
+echo "📦 Bağımlılıklar yükleniyor..."
 pip install -e .
 
-# 3. .desktop dosyasını kullanıcı klasörüne kopyala
+echo "🖥️ Masaüstü kısayolu oluşturuluyor..."
 mkdir -p ~/.local/share/applications/
 DESKTOP_FILE=~/.local/share/applications/lokal-ajan.desktop
 
-# Exec yolunu güncelleyelim ki yerel repodan çalışsın
-LAUNCHER_PATH="$(pwd)/launcher/launcher.py"
-cat launcher/lokal-ajan.desktop | sed "s|Exec=python3 /opt/lokal-ajan/launcher/launcher.py|Exec=python3 $LAUNCHER_PATH|g" > $DESKTOP_FILE
-chmod +x $DESKTOP_FILE
+LAUNCHER_PATH="$INSTALL_DIR/launcher/launcher.py"
+if [ -f "launcher/lokal-ajan.desktop" ]; then
+    cat launcher/lokal-ajan.desktop | sed "s|Exec=python3 /opt/lokal-ajan/launcher/launcher.py|Exec=python3 $LAUNCHER_PATH|g" > $DESKTOP_FILE
+    chmod +x $DESKTOP_FILE
+    echo "✅ .desktop dosyası oluşturuldu."
+fi
 
-echo ".desktop dosyası ~/.local/share/applications/ içine kopyalandı."
+echo "🔗 Terminal 'localajan' kısayolu ayarlanıyor..."
+# Remove old alias if exists
+sed -i '/alias localajan=/d' ~/.bashrc
+sed -i '/alias localajan=/d' ~/.zshrc 2>/dev/null || true
 
-# 4. Ripgrep kontrol
+echo "alias localajan='$INSTALL_DIR/.venv/bin/python3 -m lokal_ajan.cli'" >> ~/.bashrc
+if [ -f ~/.zshrc ]; then
+    echo "alias localajan='$INSTALL_DIR/.venv/bin/python3 -m lokal_ajan.cli'" >> ~/.zshrc
+fi
+
 if ! command -v rg &> /dev/null; then
-    echo "Uyarı: 'ripgrep' (rg) bulunamadı. Arama aracı grep'e düşecektir."
+    echo "⚠️ Uyarı: 'ripgrep' (rg) bulunamadı. Kurmanız önerilir."
 fi
 
-# 5. Ollama kontrol
 if curl -s http://localhost:11434/api/tags &> /dev/null; then
-    echo "Ollama servisi çalışıyor."
+    echo "✅ Ollama servisi çalışıyor."
 else
-    echo "Uyarı: Ollama servisi şu an http://localhost:11434 adresinde yanıt vermiyor."
+    echo "⚠️ Uyarı: Ollama servisi şu an yanıt vermiyor."
 fi
 
-echo "Kurulum tamamlandı! Ajanı terminalden 'source .venv/bin/activate && lokal-ajan' ile veya uygulama menüsünden 'Lokal Ajan' ile başlatabilirsiniz."
+echo ""
+echo "🎉 KURULUM BAŞARIYLA TAMAMLANDI! 🎉"
+echo "👉 Terminalinizi yeniden başlatın veya şu komutu çalıştırın:"
+echo "    source ~/.bashrc"
+echo "👉 Ardından istediğiniz her yerde şu komutla ajanı başlatabilirsiniz:"
+echo "    localajan"

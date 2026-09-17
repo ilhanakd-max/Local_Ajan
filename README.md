@@ -5,9 +5,27 @@ yeteneğine sahip agentic bir CLI aracı. Özellikle **qwen3:0.6b, qwen3:1.7b,
 qwen3:4b** gibi çok küçük/hafif modellerle güvenilir tool-call üretimi için
 optimize edilmiştir (bkz. [`CHANGES_qwen3.md`](./CHANGES_qwen3.md)).
 
-## Kurulum
+## Kurulum (Tek Satırla Hızlı Kurulum)
+
+### Linux / macOS:
+```bash
+curl -fsSL https://raw.githubusercontent.com/ilhanakd-max/Local_Ajan/main/scripts/install.sh | bash
+```
+
+### Windows (PowerShell):
+```powershell
+powershell -c "irm https://raw.githubusercontent.com/ilhanakd-max/Local_Ajan/main/scripts/install.ps1 | iex"
+```
+
+*Kurulum tamamlandıktan sonra terminalde `localajan` yazarak uygulamayı başlatabilirsiniz.*
+
+---
+
+### Manuel Kurulum (Geliştiriciler İçin)
 
 ```bash
+git clone https://github.com/ilhanakd-max/Local_Ajan.git
+cd Local_Ajan
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
