@@ -57,6 +57,17 @@ class TestSession(unittest.TestCase):
         self.assertNotIn("s1", names_after)
         self.assertIn("s2", names_after)
 
+    def test_project_folder_and_auto_naming(self):
+        from lokal_ajan.agent.session import generate_session_name
+        auto_name = generate_session_name()
+        self.assertTrue(auto_name.startswith("oturum_"))
+        
+        # Test saving in project folder
+        path = save_session(self.workdir, [{"role": "user", "content": "test"}], "test-model", auto_name)
+        expected_dir = Path(self.workdir) / ".lokal_ajan" / "sessions"
+        self.assertEqual(path.parent.resolve(), expected_dir.resolve())
+        self.assertTrue(path.is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -67,16 +67,16 @@ localajan run "src/ klasöründeki TODO yorumlarını listele" --model qwen3:1.7
 ```
 
 Terminal içi komutlar:
-- `/session`: Aktif oturum bilgisini ve komutlarını gösterir.
-- `/session list`: Projede kaydedilmiş oturumları listeler.
-- `/session save <ad>`: Mevcut oturumu özel bir isimle kaydeder.
-- `/session load <ad>`: Kaydedilmiş bir oturumu yükler.
-- `/model`: Kullanılan yapay zeka modelini değiştirir (sohbet geçmişi korunarak yeni modele aktarılır!).
-- `/new`: Sohbet geçmişini temizler ve sıfırdan yeni oturum başlatır.
-- `/ponytail on|off`: Lazy Senior Dev modunu açıp kapatır.
-- `exit`: Çıkış yapar.
+- `help/` (veya `/help`): Uygulamanın tüm kısayol ve komutlarını renkli tablo olarak listeler.
+- `session save/` (veya `/session save`): Oturumu otomatik tarih/saat ismiyle (veya `session save/ <ad>` ile) proje klasörüne (`.lokal_ajan/sessions/`) kaydeder.
+- `session load/` (veya `/session load`): Projedeki kayıtlı oturumları **yukarı/aşağı ok tuşlarıyla (↑ / ↓)** etkileşimli menüden seçip yükler.
+- `session list/` (veya `/session list`): Projede kaydedilmiş oturumları listeler.
+- `model/` (veya `/model`): Kullanılan yapay zeka modelini değiştirir (sohbet geçmişi korunarak yeni modele aktarılır!).
+- `new/` (veya `/new`): Sohbet geçmişini temizler ve sıfırdan yeni oturum başlatır.
+- `ponytail/` (veya `/ponytail [on|off]`): Lazy Senior Dev modunu açıp kapatır.
+- `exit` (veya `quit`, `/q`): Çıkış yapar.
 
-> 💡 **Oturum & Model Hafızası:** Terminali kapatsanız bile `localajan` projede kaldığınız yeri otomatik hatırlar. İstediğiniz zaman farklı bir lokal modele geçseniz dahi sohbet ve bağlam korunarak devam eder. Sıfırdan başlamak için `localajan --new` veya terminal içinde `/new` yazmanız yeterlidir.
+> 💡 **Proje İçi Oturum & Model Hafızası:** Oturum verileri doğrudan proje klasörünüzün içine (`.lokal_ajan/sessions/`) kaydedilir. Terminali kapatsanız bile `localajan` kaldığınız yeri hatırlar. İstediğiniz zaman farklı bir lokal modele geçseniz dahi sohbet ve bağlam korunarak devam eder. Sıfırdan başlamak için `localajan --new` veya terminal içinde `new/` yazmanız yeterlidir.
 
 ---
 
@@ -136,16 +136,16 @@ localajan run "list all TODO comments in the src/ directory" --model qwen3:1.7b
 ```
 
 In-Chat Commands:
-- `/session`: Displays active session info and available session commands.
-- `/session list`: Lists all saved sessions for the project.
-- `/session save <name>`: Saves the current conversation under a specific name.
-- `/session load <name>`: Loads a previously saved session.
-- `/model`: Switches the active AI model (conversation history is seamlessly preserved and transferred to the new model!).
-- `/new`: Resets the session and starts fresh.
-- `/ponytail on|off`: Toggles the Lazy Senior Dev coding mode.
-- `exit`: Quits the application.
+- `help/` (or `/help`): Lists all shortcuts, commands, and CLI options in a formatted table.
+- `session save/` (or `/session save`): Automatically generates a timestamped session name (or accepts a custom name) and saves it into the project folder (`.lokal_ajan/sessions/`).
+- `session load/` (or `/session load`): Interactively lists saved sessions to select with **UP/DOWN arrow keys (↑ / ↓)**.
+- `session list/` (or `/session list`): Lists all saved sessions for this project.
+- `model/` (or `/model`): Switches the active AI model (conversation history is preserved and transferred to the new model!).
+- `new/` (or `/new`): Resets the session and starts fresh.
+- `ponytail/` (or `/ponytail [on|off]`): Toggles the Lazy Senior Dev coding mode.
+- `exit` (or `quit`, `/q`): Quits the application.
 
-> 💡 **Session & Model Memory:** Even if you exit the terminal, `localajan` automatically remembers your project session. You can switch between different local models at any time without losing context. To start fresh, simply run `localajan --new` or type `/new`.
+> 💡 **In-Project Session & Model Memory:** Sessions are saved directly within your project directory (`.lokal_ajan/sessions/`). Even if you exit the terminal, `localajan` remembers your exact state. You can switch between different local models at any time without losing context. To start fresh, run `localajan --new` or type `new/`.
 
 ---
 *Built for developers who want private, local, and lightning-fast AI agents right in their terminal.*

@@ -129,6 +129,51 @@ def check_for_updates():
         pass
     return None
 
+
+def normalize_cmd(text: str) -> str:
+    """Strips leading and trailing slashes and lowercases command for flexible input."""
+    t = text.strip()
+    while t.startswith("/"):
+        t = t[1:].strip()
+    while t.endswith("/"):
+        t = t[:-1].strip()
+    return t.lower()
+
+
+def show_help():
+    """Displays a beautifully formatted cheat sheet of all commands and shortcuts."""
+    from rich.table import Table
+    from rich.panel import Panel
+
+    table = Table(show_header=True, header_style="bold magenta", expand=True)
+    table.add_column("Komut / Kısayol", style="bold cyan", width=30)
+    table.add_column("Açıklama", style="white")
+
+    table.add_row("help/  veya  /help", "Bu yardım tablosunu ve tüm kısayolları listeler.")
+    table.add_row("session save/  veya  /session save", "Oturumu otomatik isimle (veya /session save <ad>) kaydeder.")
+    table.add_row("session load/  veya  /session load", "Kayıtlı oturumları ok tuşlarıyla (↑ / ↓) seçip yükler.")
+    table.add_row("session list/  veya  /session list", "Projedeki tüm kayıtlı oturumları listeler.")
+    table.add_row("model/  veya  /model", "Modeli değiştirir (sohbet geçmişi korunarak aktarılır).")
+    table.add_row("new/  veya  /new", "Mevcut sohbeti ve oturumu sıfırlayıp temiz sayfa açar.")
+    table.add_row("ponytail/  veya  /ponytail", "Tembel Kıdemli Yazılımcı (minimalist kod) modunu açar/kapatır.")
+    table.add_row("exit  veya  quit,  /q", "Uygulamadan çıkar.")
+    
+    console.print()
+    console.print(Panel(table, title="[bold green]Lokal Ajan Kısayolları ve Fonksiyonları[/bold green]", border_style="cyan"))
+    
+    cli_table = Table(show_header=True, header_style="bold yellow", expand=True)
+    cli_table.add_column("Terminal Parametresi", style="bold yellow", width=30)
+    cli_table.add_column("İşlev", style="white")
+    cli_table.add_row("localajan", "Normal başlatma (varsa önceki oturumu otomatik devam ettirir)")
+    cli_table.add_row("localajan --new (-n)", "Önceki oturumu yok sayarak sıfırdan başlar")
+    cli_table.add_row("localajan --session <ad>", "Belirli bir oturumu yükler")
+    cli_table.add_row("localajan --model <model>", "Belirli bir model ile başlatır")
+    cli_table.add_row("localajan --gpu-mode (-g)", "Küçük modellerde %100 GPU hızlandırmasını açar (8K Context)")
+    cli_table.add_row("localajan update", "Uygulamayı GitHub'dan en son sürüme günceller")
+    console.print(Panel(cli_table, title="[bold yellow]Terminal Başlatma Parametreleri[/bold yellow]", border_style="yellow"))
+    console.print()
+
+
 def start_interactive_session(model: str, workdir: str, worker_model: str = None, gpu_mode: bool = False, session_name: str = "default", new_session: bool = False):
     config = load_config()
     
@@ -189,11 +234,9 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
         console.print(f"Model: [green]{target_model}[/green] (Context: {profile.num_ctx}, Temp: {profile.temperature})")
     
     console.print(f"Çalışma Dizini: [yellow]{workdir}[/yellow]")
-    console.print("Çıkmak için 'exit' veya 'quit' yazın.")
-    console.print("Model değiştirmek için '/model' yazın.")
-    console.print("Yeni oturum başlatmak için '/new' yazın.")
-    console.print("Oturumları yönetmek için '/session' yazın.")
-    console.print("Ponytail (Lazy Dev) modunu değiştirmek için '/ponytail', '/ponytail on' veya '/ponytail off' yazın.\n")
+    console.print("Yardım ve kısayol listesi: [bold cyan]help/[/bold cyan]")
+    console.print("Oturumu kaydet: [bold cyan]session save/[/bold cyan]  |  Yükle (ok tuşlarıyla): [bold cyan]session load/[/bold cyan]")
+    console.print("Model değiştir: [bold cyan]model/[/bold cyan]  |  Sıfırla: [bold cyan]new/[/bold cyan]  |  Çıkış: [bold cyan]exit[/bold cyan]\n")
     
     # Arka planda kullanılmayan diğer Ollama modellerini bellekten boşalt
     from lokal_ajan.llm.ollama_client import free_unused_models
@@ -250,73 +293,119 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
             console.print("\n[yellow]Çıkılıyor...[/yellow]")
             break
             
-        cmd = user_input.strip().lower()
-
+        cmd = user_input.strip()
         if not cmd:
             continue
 
-        if cmd in ("exit", "quit", "/exit", "/quit", "q", "/q"):
+        norm = normalize_cmd(cmd)
+
+        if norm in ("exit", "quit", "q"):
             console.print("[yellow]Çıkılıyor...[/yellow]")
             break
+
+        if norm in ("help", "yardim", "?", "h"):
+            show_help()
+            continue
         
-        if cmd in ("/new", "/clear", "/reset"):
+        if norm in ("new", "clear", "reset"):
             agent.reset_session()
             console.print("\n[bold green]✓[/bold green] Yeni oturum başlatıldı. Sohbet geçmişi ve oturum temizlendi.\n")
             continue
 
-        if cmd.startswith("/session") or cmd.startswith("/sessions"):
-            parts = user_input.strip().split()
-            subcmd = parts[1].lower() if len(parts) > 1 else "info"
-            
-            if subcmd in ("list", "ls"):
-                sessions = list_sessions(workdir)
-                if not sessions:
-                    console.print("[dim]Bu proje için kaydedilmiş başka oturum bulunmuyor.[/dim]\n")
-                else:
-                    console.print("\n[bold green]Kaydedilmiş Oturumlar:[/bold green]")
-                    for s in sessions:
-                        is_curr = " [cyan](aktif)[/cyan]" if s["name"] == agent.session_name else ""
-                        date_str = s['updated_at'][:19].replace("T", " ") if s.get('updated_at') else ""
-                        console.print(f"- [bold]{s['name']}[/bold]{is_curr} ({s['message_count']} mesaj, model: {s['model_name']}, son: {date_str})")
-                    console.print("[dim]Yüklemek için: /session load <oturum_adı>[/dim]\n")
-            elif subcmd == "save":
-                if len(parts) < 3:
-                    console.print("[red]Kullanım: /session save <oturum_adı>[/red]\n")
-                else:
-                    s_name = parts[2]
-                    agent.session_name = s_name
-                    agent.save_current_session()
-                    console.print(f"[bold green]✓[/bold green] Oturum '[green]{s_name}[/green]' olarak kaydedildi.\n")
-            elif subcmd == "load":
-                if len(parts) < 3:
-                    console.print("[red]Kullanım: /session load <oturum_adı>[/red]\n")
-                else:
-                    s_name = parts[2]
-                    loaded = load_session(workdir, s_name)
-                    if not loaded:
-                        console.print(f"[red]'{s_name}' adlı oturum bulunamadı.[/red]\n")
-                    else:
-                        agent.session_name = s_name
-                        agent.load_session_data(loaded.get("messages", []))
-                        prev_m = loaded.get("model_name", "bilinmeyen")
-                        console.print(f"[bold green]✓[/bold green] '[green]{s_name}[/green]' oturumu yüklendi ({len(loaded.get('messages', []))} mesaj, model: {agent.model_name}).\n")
+        if norm.startswith("session save"):
+            raw_tokens = cmd.split()
+            clean_tokens = [tok.strip("/") for tok in raw_tokens if tok.strip("/")]
+            from lokal_ajan.agent.session import generate_session_name
+            if len(clean_tokens) > 2:
+                s_name = clean_tokens[2]
             else:
-                curr_msgs = len([m for m in agent.history.get_messages() if m.get("role") != "system"])
-                console.print(f"\n[bold cyan]Oturum Bilgisi:[/bold cyan]")
-                console.print(f"- Aktif Oturum: [bold]{agent.session_name}[/bold]")
-                console.print(f"- Mesaj Sayısı: {curr_msgs}")
-                console.print(f"- Aktif Model: [green]{agent.model_name}[/green]")
-                console.print("[dim]Komutlar:[/dim]")
-                console.print("  /session list          -> Mevcut oturumları listele")
-                console.print("  /session save <ad>     -> Mevcut sohbeti bu adla kaydet")
-                console.print("  /session load <ad>     -> Kaydedilmiş oturumu yükle")
-                console.print("  /new                   -> Oturumu sıfırla\n")
+                s_name = generate_session_name()
+            
+            agent.session_name = s_name
+            agent.save_current_session()
+            console.print(f"\n[bold green]✓[/bold green] Oturum kaydedildi: [bold cyan]{s_name}[/bold cyan]")
+            console.print(f"[dim]Kayıt yeri: {workdir}/.lokal_ajan/sessions/{s_name}.json[/dim]\n")
+            continue
+
+        if norm.startswith("session load"):
+            raw_tokens = cmd.split()
+            clean_tokens = [tok.strip("/") for tok in raw_tokens if tok.strip("/")]
+            from lokal_ajan.agent.session import list_sessions, load_session
+            
+            # If a specific name was given: e.g. session load/ test
+            if len(clean_tokens) > 2:
+                s_name = clean_tokens[2]
+                loaded = load_session(workdir, s_name)
+                if not loaded:
+                    console.print(f"\n[red]'{s_name}' adlı oturum bulunamadı.[/red]\n")
+                else:
+                    agent.session_name = s_name
+                    agent.load_session_data(loaded.get("messages", []))
+                    prev_m = loaded.get("model_name", "bilinmeyen")
+                    console.print(f"\n[bold green]✓[/bold green] '[green]{s_name}[/green]' oturumu yüklendi ({len(loaded.get('messages', []))} mesaj, model: {agent.model_name}).\n")
+                continue
+                
+            # No name given: Show interactive UP/DOWN arrow menu!
+            sessions = list_sessions(workdir)
+            if not sessions:
+                console.print("\n[dim]Bu projede kayıtlı oturum bulunamadı.[/dim]\n")
+                continue
+                
+            selected = None
+            try:
+                from prompt_toolkit.shortcuts import choice
+                options = []
+                for s in sessions:
+                    is_curr = " [aktif]" if s["name"] == agent.session_name else ""
+                    date_str = s['updated_at'][:19].replace("T", " ") if s.get('updated_at') else ""
+                    label = f"{s['name']}{is_curr} ({s['message_count']} mesaj | model: {s['model_name']} | {date_str})"
+                    options.append((s["name"], label))
+                options.append(("__cancel__", "❌ [İptal / Vazgeç]"))
+                
+                selected = choice(
+                    message="Yüklenecek oturumu seçin (Yukarı/Aşağı ok tuşları ve Enter):",
+                    options=options,
+                    default=options[0][0]
+                )
+            except Exception:
+                console.print("\n[bold green]Kaydedilmiş Oturumlar:[/bold green]")
+                for i, s in enumerate(sessions, 1):
+                    console.print(f"  {i}. {s['name']} ({s['message_count']} mesaj)")
+                c = Prompt.ask("\nOturum numarası veya adı seçin (iptal için boş bırakın)")
+                if c.strip():
+                    if c.isdigit() and 1 <= int(c) <= len(sessions):
+                        selected = sessions[int(c)-1]["name"]
+                    else:
+                        selected = c.strip()
+
+            if selected and selected != "__cancel__":
+                loaded = load_session(workdir, selected)
+                if loaded:
+                    agent.session_name = selected
+                    agent.load_session_data(loaded.get("messages", []))
+                    prev_m = loaded.get("model_name", "bilinmeyen")
+                    console.print(f"\n[bold green]✓[/bold green] '[green]{selected}[/green]' oturumu yüklendi ({len(loaded.get('messages', []))} mesaj, model: {agent.model_name}).\n")
+            else:
+                console.print("[dim]Oturum seçimi iptal edildi.[/dim]\n")
+            continue
+
+        if norm in ("session list", "sessions list", "sessions", "session"):
+            sessions = list_sessions(workdir)
+            if not sessions:
+                console.print("\n[dim]Bu proje için kaydedilmiş başka oturum bulunmuyor.[/dim]\n")
+            else:
+                console.print("\n[bold green]Kaydedilmiş Oturumlar:[/bold green]")
+                for s in sessions:
+                    is_curr = " [cyan](aktif)[/cyan]" if s["name"] == agent.session_name else ""
+                    date_str = s['updated_at'][:19].replace("T", " ") if s.get('updated_at') else ""
+                    console.print(f"- [bold]{s['name']}[/bold]{is_curr} ({s['message_count']} mesaj, model: {s['model_name']}, son: {date_str})")
+                console.print("[dim]Yüklemek için: session load/ veya /session load[/dim]\n")
             continue
             
-        if cmd in ("/ponytail", "/ponytail on", "/ponytail off"):
-            if cmd == "/ponytail on":
+        if norm.startswith("ponytail"):
+            if norm in ("ponytail on", "ponytail/ on"):
                 new_state = True
-            elif cmd == "/ponytail off":
+            elif norm in ("ponytail off", "ponytail/ off"):
                 new_state = False
             else:
                 new_state = not agent.ponytail_enabled
@@ -332,7 +421,7 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
                 pass
             continue
         
-        if cmd in ("/model", "/models"):
+        if norm in ("model", "models"):
             switch_model(agent, config)
             continue
         
