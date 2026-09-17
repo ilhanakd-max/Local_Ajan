@@ -129,7 +129,7 @@ def check_for_updates():
         pass
     return None
 
-def start_interactive_session(model: str, workdir: str, worker_model: str = None, gpu_mode: bool = False):
+def start_interactive_session(model: str, workdir: str, worker_model: str = None, gpu_mode: bool = False, session_name: str = "default", new_session: bool = False):
     config = load_config()
     
     from lokal_ajan.config import load_state, save_state
@@ -192,6 +192,7 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
     console.print("Çıkmak için 'exit' veya 'quit' yazın.")
     console.print("Model değiştirmek için '/model' yazın.")
     console.print("Yeni oturum başlatmak için '/new' yazın.")
+    console.print("Oturumları yönetmek için '/session' yazın.")
     console.print("Ponytail (Lazy Dev) modunu değiştirmek için '/ponytail', '/ponytail on' veya '/ponytail off' yazın.\n")
     
     # Arka planda kullanılmayan diğer Ollama modellerini bellekten boşalt
@@ -213,7 +214,31 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
     except Exception:
         ponytail_enabled = False
     
-    agent = AgentLoop(model_name=target_model, profile=profile, host=config.ollama_host, workdir=workdir, config=config, worker_model=worker_model, auto_confirm=True, gpu_mode=gpu_mode, ponytail_enabled=ponytail_enabled)
+    agent = AgentLoop(
+        model_name=target_model,
+        profile=profile,
+        host=config.ollama_host,
+        workdir=workdir,
+        config=config,
+        worker_model=worker_model,
+        auto_confirm=True,
+        gpu_mode=gpu_mode,
+        ponytail_enabled=ponytail_enabled,
+        session_name=session_name
+    )
+    
+    from lokal_ajan.agent.session import load_session, save_session, list_sessions, delete_session
+    if not new_session:
+        saved_session = load_session(workdir, session_name)
+        if saved_session and saved_session.get("messages"):
+            agent.load_session_data(saved_session["messages"])
+            msg_count = len([m for m in saved_session["messages"] if m.get("role") != "system"])
+            prev_model = saved_session.get("model_name", "bilinmeyen")
+            if prev_model != target_model:
+                console.print(f"[bold green]✓[/bold green] Önceki oturum yüklendi: [cyan]{msg_count} mesaj[/cyan] (Önceki model: [dim]{prev_model}[/dim] ➔ Şimdiki model: [green]{target_model}[/green])")
+            else:
+                console.print(f"[bold green]✓[/bold green] Önceki oturum yüklendi: [cyan]{msg_count} mesaj[/cyan]")
+            console.print("[dim]Kaldığınız yerden devam ediyorsunuz. Sıfırdan başlamak için '/new' yazın.[/dim]\n")
     
     if ponytail_enabled:
         console.print("[dim italic]Ponytail (Lazy Senior Dev) mod aktif.[/dim italic]")
@@ -227,7 +252,6 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
             
         cmd = user_input.strip().lower()
 
-        
         if not cmd:
             continue
 
@@ -237,7 +261,56 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
         
         if cmd in ("/new", "/clear", "/reset"):
             agent.reset_session()
-            console.print("\n[bold green]✓[/bold green] Yeni oturum başlatıldı. Sohbet geçmişi temizlendi.\n")
+            console.print("\n[bold green]✓[/bold green] Yeni oturum başlatıldı. Sohbet geçmişi ve oturum temizlendi.\n")
+            continue
+
+        if cmd.startswith("/session") or cmd.startswith("/sessions"):
+            parts = user_input.strip().split()
+            subcmd = parts[1].lower() if len(parts) > 1 else "info"
+            
+            if subcmd in ("list", "ls"):
+                sessions = list_sessions(workdir)
+                if not sessions:
+                    console.print("[dim]Bu proje için kaydedilmiş başka oturum bulunmuyor.[/dim]\n")
+                else:
+                    console.print("\n[bold green]Kaydedilmiş Oturumlar:[/bold green]")
+                    for s in sessions:
+                        is_curr = " [cyan](aktif)[/cyan]" if s["name"] == agent.session_name else ""
+                        date_str = s['updated_at'][:19].replace("T", " ") if s.get('updated_at') else ""
+                        console.print(f"- [bold]{s['name']}[/bold]{is_curr} ({s['message_count']} mesaj, model: {s['model_name']}, son: {date_str})")
+                    console.print("[dim]Yüklemek için: /session load <oturum_adı>[/dim]\n")
+            elif subcmd == "save":
+                if len(parts) < 3:
+                    console.print("[red]Kullanım: /session save <oturum_adı>[/red]\n")
+                else:
+                    s_name = parts[2]
+                    agent.session_name = s_name
+                    agent.save_current_session()
+                    console.print(f"[bold green]✓[/bold green] Oturum '[green]{s_name}[/green]' olarak kaydedildi.\n")
+            elif subcmd == "load":
+                if len(parts) < 3:
+                    console.print("[red]Kullanım: /session load <oturum_adı>[/red]\n")
+                else:
+                    s_name = parts[2]
+                    loaded = load_session(workdir, s_name)
+                    if not loaded:
+                        console.print(f"[red]'{s_name}' adlı oturum bulunamadı.[/red]\n")
+                    else:
+                        agent.session_name = s_name
+                        agent.load_session_data(loaded.get("messages", []))
+                        prev_m = loaded.get("model_name", "bilinmeyen")
+                        console.print(f"[bold green]✓[/bold green] '[green]{s_name}[/green]' oturumu yüklendi ({len(loaded.get('messages', []))} mesaj, model: {agent.model_name}).\n")
+            else:
+                curr_msgs = len([m for m in agent.history.get_messages() if m.get("role") != "system"])
+                console.print(f"\n[bold cyan]Oturum Bilgisi:[/bold cyan]")
+                console.print(f"- Aktif Oturum: [bold]{agent.session_name}[/bold]")
+                console.print(f"- Mesaj Sayısı: {curr_msgs}")
+                console.print(f"- Aktif Model: [green]{agent.model_name}[/green]")
+                console.print("[dim]Komutlar:[/dim]")
+                console.print("  /session list          -> Mevcut oturumları listele")
+                console.print("  /session save <ad>     -> Mevcut sohbeti bu adla kaydet")
+                console.print("  /session load <ad>     -> Kaydedilmiş oturumu yükle")
+                console.print("  /new                   -> Oturumu sıfırla\n")
             continue
             
         if cmd in ("/ponytail", "/ponytail on", "/ponytail off"):
@@ -339,12 +412,15 @@ def main(
     model: str = typer.Option(None, "--model", "-m", help="Kullanılacak Ollama modeli"),
     worker_model: str = typer.Option(None, "--worker-model", "-wm", help="Orkestratör modu için işçi modeli"),
     workdir: str = typer.Option(".", "--workdir", "-w", help="Çalışma dizini"),
-    gpu_mode: bool = typer.Option(False, "--gpu-mode", "-g", help="Küçük modeller için context boyutunu 8K'ya çekerek %100 GPU hızlandırmasını aktif et")
+    gpu_mode: bool = typer.Option(False, "--gpu-mode", "-g", help="Küçük modeller için context boyutunu 8K'ya çekerek %100 GPU hızlandırmasını aktif et"),
+    session: str = typer.Option("default", "--session", "-s", help="Kullanılacak oturum adı (varsayılan: default)"),
+    new_session: bool = typer.Option(False, "--new", "-n", help="Önceki oturumu yüklemeden sıfırdan başla")
 ):
     if ctx.invoked_subcommand is None:
-        start_interactive_session(model, workdir, worker_model, gpu_mode=gpu_mode)
+        start_interactive_session(model, workdir, worker_model, gpu_mode=gpu_mode, session_name=session, new_session=new_session)
 
 
 if __name__ == "__main__":
     app()
+
 

@@ -18,7 +18,7 @@ from rich.console import Console
 console = Console()
 
 class AgentLoop:
-    def __init__(self, model_name: str, profile: ModelProfile, host: str, workdir: str, config: dict, worker_model: str = None, auto_confirm: bool = True, gpu_mode: bool = False, ponytail_enabled: bool = False):
+    def __init__(self, model_name: str, profile: ModelProfile, host: str, workdir: str, config: dict, worker_model: str = None, auto_confirm: bool = True, gpu_mode: bool = False, ponytail_enabled: bool = False, session_name: str = "default"):
         self.model_name = model_name
         self.profile = profile
         self.host = host
@@ -29,6 +29,7 @@ class AgentLoop:
         self.auto_confirm = auto_confirm
         self.gpu_mode = gpu_mode
         self.ponytail_enabled = ponytail_enabled
+        self.session_name = session_name
         self._last_call_key = None
 
         
@@ -176,16 +177,46 @@ class AgentLoop:
     def reset_session(self):
         """
         Clears conversation history and re-initializes system prompt.
+        Also deletes persisted session file.
         """
         self.history.clear()
         is_orch = bool(self.worker_model)
         sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
         self.history.add_message("system", sys_prompt)
         self._last_call_key = None
+        try:
+            from lokal_ajan.agent.session import delete_session
+            delete_session(self.workdir, self.session_name)
+        except Exception:
+            pass
+
+    def load_session_data(self, messages: list):
+        """
+        Loads messages from a saved session. Keeps the system prompt appropriate
+        for the current model while restoring all user/assistant/tool messages.
+        """
+        self.history.clear()
+        is_orch = bool(self.worker_model)
+        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        self.history.add_message("system", sys_prompt)
+        for m in messages:
+            if m.get("role") != "system":
+                self.history.add_message(m["role"], m["content"])
+
+    def save_current_session(self):
+        """Persists the current conversation state to disk."""
+        if not self.session_name:
+            return
+        try:
+            from lokal_ajan.agent.session import save_session
+            save_session(self.workdir, self.history.get_messages(), self.model_name, self.session_name)
+        except Exception:
+            pass
 
     def update_model(self, new_model: str, new_profile: ModelProfile):
         """
         Updates the active model, profile, and synchronizes the system prompt.
+        Preserves conversation history across model changes.
         """
         self.model_name = new_model
         self.profile = new_profile
@@ -196,6 +227,7 @@ class AgentLoop:
             messages[0]["content"] = sys_prompt
         else:
             self.history.messages.insert(0, {"role": "system", "content": sys_prompt})
+        self.save_current_session()
 
     def toggle_ponytail(self, state: bool):
         """
@@ -614,6 +646,7 @@ class AgentLoop:
         if step_count >= max_steps:
             console.print("[bold red]Maksimum adım sayısına ulaşıldı, döngü durduruldu.[/bold red]")
             
+        self.save_current_session()
         return True
 
 
