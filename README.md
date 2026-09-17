@@ -28,12 +28,21 @@ Lokal Ajan, Ollama tabanlı lokal yapay zeka modelleriyle ve bulut sağlayıcıl
 
 Lokal Ajan'ı sisteminize küresel bir komut satırı aracı (tıpkı `npm install -g` gibi) olarak kurmak için **pipx** kullanılması önerilir. Bu yöntem hem Windows hem de Linux'ta tamamen güvenlidir ve antivirüs uyarılarını engeller.
 
+**Adım 1: Pipx'i Kurun (Eğer yüklü değilse)**
 ```bash
-# Eğer pipx yüklü değilse önce onu kurun (Windows: pip install pipx)
+pip install pipx
+python -m pipx ensurepath
+# UYARI: Bu işlemden sonra terminalinizi kapatıp YENİDEN AÇIN.
+```
+
+**Adım 2: Ajanı Kurun**
+```bash
 pipx install git+https://github.com/ilhanakd-max/Local_Ajan.git
 ```
 
-*Kurulum bittikten sonra terminalinizden herhangi bir klasörde sadece `localajan` yazarak uygulamayı başlatabilirsiniz.*
+*(Eğer `pipx` kullanmak istemiyorsanız, doğrudan `pip install git+https://github.com/ilhanakd-max/Local_Ajan.git` yazarak da standart kurulum yapabilirsiniz).*
+
+Kurulum bittikten sonra terminalinizden herhangi bir klasörde sadece `localajan` yazarak uygulamayı başlatabilirsiniz.
 
 ### 🛠 Kullanım
 
@@ -72,11 +81,21 @@ Local Agent (Lokal Ajan) is a terminal-based agentic CLI tool with powerful **to
 
 To install Local Agent globally as a standalone CLI tool (similar to `npm install -g`), we recommend using **pipx**. This method is completely safe on both Windows and Linux, entirely avoiding antivirus flags.
 
+**Step 1: Install Pipx (If not already installed)**
 ```bash
-# If you don't have pipx, install it first (Windows: pip install pipx)
+pip install pipx
+python -m pipx ensurepath
+# WARNING: Close and RESTART your terminal after running this command.
+```
+
+**Step 2: Install Local Agent**
+```bash
 pipx install git+https://github.com/ilhanakd-max/Local_Ajan.git
 ```
-*After installation, you can launch the app from anywhere by typing `localajan` in your terminal.*
+
+*(If you don't want to use `pipx`, you can also use standard pip: `pip install git+https://github.com/ilhanakd-max/Local_Ajan.git`)*
+
+After installation, you can launch the app from anywhere by typing `localajan` in your terminal.
 
 ### 🛠 Usage
 
