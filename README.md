@@ -37,10 +37,10 @@ python -m pipx ensurepath
 
 **Adım 2: Ajanı Kurun**
 ```bash
-pipx install git+https://github.com/ilhanakd-max/Local_Ajan.git
+pipx install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip
 ```
 
-*(Eğer `pipx` kullanmak istemiyorsanız, doğrudan `pip install git+https://github.com/ilhanakd-max/Local_Ajan.git` yazarak da standart kurulum yapabilirsiniz).*
+*(Eğer `pipx` kullanmak istemiyorsanız, doğrudan `pip install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip` yazarak da standart kurulum yapabilirsiniz).*
 
 Kurulum bittikten sonra terminalinizden herhangi bir klasörde sadece `localajan` yazarak uygulamayı başlatabilirsiniz.
 
@@ -90,10 +90,10 @@ python -m pipx ensurepath
 
 **Step 2: Install Local Agent**
 ```bash
-pipx install git+https://github.com/ilhanakd-max/Local_Ajan.git
+pipx install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip
 ```
 
-*(If you don't want to use `pipx`, you can also use standard pip: `pip install git+https://github.com/ilhanakd-max/Local_Ajan.git`)*
+*(If you don't want to use `pipx`, you can also use standard pip: `pip install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip`)*
 
 After installation, you can launch the app from anywhere by typing `localajan` in your terminal.
 
