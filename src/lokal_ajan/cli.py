@@ -102,6 +102,27 @@ def ensure_openrouter_key(config):
         else:
             console.print("[red]Anahtar girilmedi. İşlem başarısız olabilir.[/red]\n")
 
+def check_for_updates():
+    import importlib.metadata
+    import httpx
+    import re
+    try:
+        current_version = importlib.metadata.version("lokal-ajan")
+        resp = httpx.get("https://raw.githubusercontent.com/ilhanakd-max/Local_Ajan/main/pyproject.toml", timeout=1.5)
+        if resp.status_code == 200:
+            match = re.search(r'version\s*=\s*"([^"]+)"', resp.text)
+            if match:
+                remote_version = match.group(1)
+                
+                def parse_v(v):
+                    return tuple(map(int, v.split(".")))
+                
+                if parse_v(remote_version) > parse_v(current_version):
+                    return remote_version
+    except Exception:
+        pass
+    return None
+
 def start_interactive_session(model: str, workdir: str, worker_model: str = None, gpu_mode: bool = False):
     config = load_config()
     target_model = model or config.default_model
@@ -123,6 +144,19 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
                                  /___/              
 """
     console.print(f"[bold cyan]{LOGO}[/bold cyan]")
+    
+    # Check for updates
+    import threading
+    def update_checker_thread():
+        new_v = check_for_updates()
+        if new_v:
+            console.print(f"\n[bold yellow]🎉 Yeni bir sürüm ({new_v}) mevcut![/bold yellow]")
+            console.print("[yellow]Yüklemek için terminalden çıkıp şunu çalıştırın: [bold white]localajan update[/bold white][/yellow]\n")
+            
+    t = threading.Thread(target=update_checker_thread)
+    t.daemon = True
+    t.start()
+    
     console.print(f"[bold blue]Lokal Ajan[/bold blue] başlatılıyor...")
     if gpu_mode:
         console.print("[bold yellow]⚡ Hızlı GPU Modu Aktif (8K Context / %100 GPU Hızlandırma)[/bold yellow]")
@@ -261,6 +295,21 @@ def list_models():
     console.print("[bold green]Desteklenen Model Profilleri:[/bold green]")
     for p in PROFILES:
         console.print(f"- [cyan]{p.name_pattern}[/cyan] (Context: {p.num_ctx}, Native Tool: {p.native_tool_call})")
+
+@app.command(name="update")
+def update_app():
+    """
+    Lokal Ajan'ı en son sürüme günceller.
+    """
+    import sys
+    import subprocess
+    console.print("[bold cyan]Lokal Ajan GitHub'dan güncelleniyor...[/bold cyan]")
+    try:
+        url = "https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip"
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", url])
+        console.print("[bold green]✅ Güncelleme başarıyla tamamlandı![/bold green]")
+    except Exception as e:
+        console.print(f"[bold red]❌ Güncelleme başarısız oldu: {e}[/bold red]")
 
 @app.callback(invoke_without_command=True)
 def main(
