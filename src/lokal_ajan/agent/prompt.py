@@ -90,10 +90,29 @@ Not lazy about: understanding the problem, input validation at trust boundaries,
 """
 
 def get_system_prompt(profile_level: str, tools_schema: List[Dict[str, Any]], is_orchestrator: bool = False, workdir: str = ".", ponytail_enabled: bool = False) -> str:
+    import platform
     tools_list = format_tools_compact(tools_schema)
+    current_os = platform.system()
+    if current_os == "Windows":
+        os_info = (
+            "OPERATING SYSTEM: Windows\n"
+            "- When using run_shell, write Windows PowerShell / CMD commands (e.g. dir, Get-Content, where.exe).\n"
+            "- NEVER run interactive editors or pagers (nano, vim, vi, less, more). Use read_file to read files.\n"
+            "- Do NOT access Linux bash paths like ~/.bashrc.\n"
+            "- Do NOT put comments (lines starting with #) inside the shell command."
+        )
+    else:
+        os_info = (
+            f"OPERATING SYSTEM: {current_os} (Linux/Unix)\n"
+            "- When using run_shell, write standard non-interactive bash commands.\n"
+            "- NEVER run interactive editors or pagers (nano, vim, vi, less, more). Use read_file to read files."
+        )
 
     if is_orchestrator:
         base_prompt = f"""You are the ORCHESTRATOR agent (the brain). Your job is to analyze the task, explore the filesystem if needed, and DELEGATE the actual coding/execution to the worker model.
+
+{os_info}
+Workspace Directory: {workdir}
 
 TOOLS (name(args): description):
 {tools_list}
@@ -116,7 +135,8 @@ User: "create hello.html" ->
     elif profile_level == "minimal":
         base_prompt = f"""You are a coding agent with real file/shell access. You act, you don't just talk.
 
-Your current workspace directory is: {workdir}
+{os_info}
+Workspace Directory: {workdir}
 You MUST restrict all your file operations and shell commands strictly to this directory and its subdirectories. Do not attempt to access files outside this workspace.
 
 TOOLS (name(args): description):
@@ -125,7 +145,7 @@ TOOLS (name(args): description):
 RULES:
 1. To create/save a NEW file -> call write_file.
 2. To edit/update/modify an EXISTING file -> ALWAYS call edit_file(path, old_str, new_str). Do NOT rewrite the whole file with write_file when making small changes or fixes!
-3. To read a file -> call read_file. Never guess its content.
+3. To read a file -> call read_file. Never guess its content. Never use interactive editors (nano, vim, less).
 4. To run a command -> call run_shell.
 5. To list files -> call list_dir.
 6. Only ONE tool call per turn. Wait for the result before the next one.
@@ -148,7 +168,8 @@ User: "hello" -> Hello! How can I help you?"""
     else:
         base_prompt = f"""You are a coding agent with direct access to the file system and shell. You solve tasks by calling tools, not by describing what should be done.
 
-Your current workspace directory is: {workdir}
+{os_info}
+Workspace Directory: {workdir}
 You MUST restrict all your file operations and shell commands strictly to this directory and its subdirectories. Do not attempt to access files outside this workspace.
 
 TOOLS (name(args): description):
@@ -158,7 +179,7 @@ CRITICAL RULES:
 1. You are an AGENT, not a chatbot. Use tools to actually do things.
 2. To create a NEW file: call write_file. Never just print the code and tell the user to save it themselves.
 3. To edit/modify an EXISTING file: ALWAYS prefer edit_file(path, old_str, new_str) over write_file. Do NOT rewrite the entire file when making changes or fixes; replace only the necessary code block to save time.
-4. To read/view a file: call read_file. Never guess its content.
+4. To read/view a file: call read_file. Never guess its content. Never use interactive commands like nano, vim, less.
 5. To run a command: call run_shell. Never just tell the user which command to run.
 6. To list files: call list_dir.
 7. Exactly ONE tool call per turn. Wait for the observation before calling the next tool.

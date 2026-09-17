@@ -59,6 +59,12 @@ def switch_model(agent: AgentLoop, config):
     from lokal_ajan.llm.ollama_client import free_unused_models
     free_unused_models(new_model, agent.worker_model, config.ollama_host)
     
+    try:
+        from lokal_ajan.config import save_state
+        save_state({"model": new_model})
+    except Exception:
+        pass
+    
     console.print(f"\n[bold green]✓[/bold green] Model değiştirildi: [green]{new_model}[/green] (Context: {new_profile.num_ctx}, Temp: {new_profile.temperature})")
     console.print("[dim]Sistem promptu yeni profile göre güncellendi, sohbete devam edebilirsiniz.[/dim]\n")
 
@@ -125,7 +131,23 @@ def check_for_updates():
 
 def start_interactive_session(model: str, workdir: str, worker_model: str = None, gpu_mode: bool = False):
     config = load_config()
-    target_model = model or config.default_model
+    
+    from lokal_ajan.config import load_state, save_state
+    saved = load_state()
+    saved_model = saved.get("model")
+    target_model = model or saved_model or config.default_model
+
+    # If target_model is an Ollama model, check if it exists or fallback to an installed one
+    if not target_model.startswith("openrouter/") and not target_model.startswith("groq/"):
+        from lokal_ajan.llm.ollama_client import list_ollama_models
+        installed_ollama = list_ollama_models(config.ollama_host)
+        if installed_ollama and target_model not in installed_ollama:
+            old_model = target_model
+            if saved_model and saved_model in installed_ollama:
+                target_model = saved_model
+            else:
+                target_model = installed_ollama[0]
+            console.print(f"[dim yellow]ℹ '{old_model}' sistemde bulunamadı, yüklü model seçildi: [bold green]{target_model}[/bold green][/dim yellow]")
     
     if target_model.startswith("openrouter/") or (worker_model and worker_model.startswith("openrouter/")):
         ensure_openrouter_key(config)

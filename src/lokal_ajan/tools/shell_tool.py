@@ -22,15 +22,59 @@ class RunShellTool(BaseTool):
         
     def run(self, command: str) -> str:
         try:
-            # We enforce timeout to prevent hanging commands
-            result = subprocess.run(
-                command,
-                shell=True,
-                cwd=self.workdir,
-                text=True,
-                capture_output=True,
-                timeout=60
-            )
+            # Filter out comments and blank lines that models often inject
+            cleaned_lines = []
+            for line in command.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("#") or stripped.startswith("//") or stripped.upper().startswith("REM "):
+                    continue
+                cleaned_lines.append(line)
+            
+            cleaned_cmd = "\n".join(cleaned_lines).strip()
+            if not cleaned_cmd:
+                return "Command contained only comments and was skipped."
+
+            # Guard against interactive editors/pagers that hang non-interactive shells
+            first_words = {w.lower() for w in cleaned_cmd.replace("|", " ").replace(";", " ").replace("&", " ").split()}
+            interactive_tools = {"nano", "vim", "vi", "less", "more"}
+            blocked = first_words.intersection(interactive_tools)
+            if blocked:
+                tool_blocked = next(iter(blocked))
+                return (
+                    f"Error: Interactive editor/pager '{tool_blocked}' cannot be run in this environment. "
+                    "Use 'read_file' to view files or 'edit_file'/'write_file' to modify files."
+                )
+
+            if platform.system() == "Windows":
+                # On Windows, run via PowerShell so that commands like 'curl', 'cat', 'ls', 'rm',
+                # and multiline expressions work without CMD syntax errors.
+                try:
+                    result = subprocess.run(
+                        ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", cleaned_cmd],
+                        cwd=self.workdir,
+                        text=True,
+                        capture_output=True,
+                        timeout=60
+                    )
+                except FileNotFoundError:
+                    # Fallback to CMD if powershell binary is somehow not found
+                    result = subprocess.run(
+                        cleaned_cmd,
+                        shell=True,
+                        cwd=self.workdir,
+                        text=True,
+                        capture_output=True,
+                        timeout=60
+                    )
+            else:
+                result = subprocess.run(
+                    cleaned_cmd,
+                    shell=True,
+                    cwd=self.workdir,
+                    text=True,
+                    capture_output=True,
+                    timeout=60
+                )
             
             output = ""
             if result.stdout:
