@@ -22,42 +22,67 @@ def switch_model(agent: AgentLoop, config):
     ollama_models = list_ollama_models(config.ollama_host) or []
     all_models = external_models + ollama_models
 
-    console.print("\n[bold green]Mevcut Modeller:[/bold green]")
+    console.print("\n[bold green]Mevcut Modeller & Ayarlar:[/bold green]")
+    orch_status = f"[green]Açık (İşçi: {agent.worker_model})[/green]" if agent.worker_model else "[dim]Kapalı[/dim]"
+    console.print(f"  [cyan]0[/cyan]. [bold magenta][Ayar] Orkestratör Modunu Aç/Kapat[/bold magenta] (Durum: {orch_status})")
+    
     for i, m in enumerate(all_models, 1):
         marker = " [yellow]◄ aktif[/yellow]" if m == agent.model_name else ""
         category = "[blue][Groq/Cloud][/blue] " if m in external_models else "[cyan][Ollama][/cyan] "
         console.print(f"  [cyan]{i}[/cyan]. {category}{m}{marker}")
     
-    choice = Prompt.ask("\nModel numarası veya adı seçin (iptal için boş bırakın)")
+    choice = Prompt.ask("\nModel numarası (1 vb.) seçin veya ayar için '0' yazın (iptal için boş bırakın)")
     
     if not choice.strip():
         console.print("[dim]İptal edildi.[/dim]")
         return
     
     val = choice.strip()
-    if val.isdigit():
-        idx = int(val) - 1
-        if 0 <= idx < len(all_models):
-            new_model = all_models[idx]
-        else:
-            console.print("[bold red]Geçersiz seçim numarası.[/bold red]")
-            return
-    else:
-        new_model = val
+    new_model = agent.model_name
+    new_worker_model = agent.worker_model
     
-    
-    worker_choice = Prompt.ask("\nİşçi (Worker) model numarasını veya adını seçin (Orkestratör modunu kapatmak için boş bırakın)")
-    new_worker_model = None
-    if worker_choice.strip():
-        val_w = worker_choice.strip()
-        if val_w.isdigit():
-            idx_w = int(val_w) - 1
-            if 0 <= idx_w < len(all_models):
-                new_worker_model = all_models[idx_w]
+    if val == "0":
+        console.print("\n[bold magenta]--- Orkestratör Modu Kurulumu ---[/bold magenta]")
+        console.print("[dim]Orkestratör modu, büyük bir 'Beyin' modelinin planlama yapıp küçük bir 'İşçi' modeline kod yazdırmasını sağlar.[/dim]")
+        
+        brain_choice = Prompt.ask(f"1. Beyin modelinin numarasını veya adını seçin (Mevcut: {agent.model_name} - değiştirmemek için boş bırakın)")
+        if brain_choice.strip():
+            b_val = brain_choice.strip()
+            if b_val.isdigit():
+                idx = int(b_val) - 1
+                if 0 <= idx < len(all_models):
+                    new_model = all_models[idx]
+                else:
+                    console.print("[bold red]Geçersiz beyin seçim numarası.[/bold red]")
+                    return
             else:
-                console.print("[bold red]Geçersiz seçim numarası, Orkestratör modu kapatılıyor.[/bold red]")
+                new_model = b_val
+                
+        worker_choice = Prompt.ask("2. İşçi modelinin numarasını veya adını seçin (Kapatmak için '0' veya 'kapat' yazın)")
+        if worker_choice.strip():
+            w_val = worker_choice.strip().lower()
+            if w_val in ("0", "kapat", "off", "false", "none"):
+                new_worker_model = None
+            elif w_val.isdigit():
+                idx_w = int(w_val) - 1
+                if 0 <= idx_w < len(all_models):
+                    new_worker_model = all_models[idx_w]
+                else:
+                    console.print("[bold red]Geçersiz işçi seçim numarası.[/bold red]")
+                    return
+            else:
+                new_worker_model = w_val
+    else:
+        # Standart model değiştirme
+        if val.isdigit():
+            idx = int(val) - 1
+            if 0 <= idx < len(all_models):
+                new_model = all_models[idx]
+            else:
+                console.print("[bold red]Geçersiz seçim numarası.[/bold red]")
+                return
         else:
-            new_worker_model = val_w
+            new_model = val
 
     if new_model == agent.model_name and new_worker_model == agent.worker_model:
         console.print(f"[dim]Zaten [green]{new_model}[/green] (Ana) ve [green]{new_worker_model or 'Yok'}[/green] (İşçi) kullanılıyor.[/dim]")

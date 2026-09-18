@@ -71,7 +71,7 @@ Terminal içi komutlar:
 - `session save/` (veya `/session save`): Oturumu otomatik tarih/saat ismiyle (veya `session save/ <ad>` ile) proje klasörüne (`.lokal_ajan/sessions/`) kaydeder.
 - `session load/` (veya `/session load`): Projedeki kayıtlı oturumları **yukarı/aşağı ok tuşlarıyla (↑ / ↓)** etkileşimli menüden seçip yükler.
 - `session list/` (veya `/session list`): Projede kaydedilmiş oturumları listeler.
-- `model/` (veya `/model`): Kullanılan yapay zeka modelini değiştirir (sohbet geçmişi korunarak yeni modele aktarılır!).
+- `model/` (veya `/model`): Kullanılan yapay zeka modelini değiştirir veya Orkestratör modunu (Beyin+İşçi) açıp kapatır (sohbet geçmişi korunur!).
 - `new/` (veya `/new`): Sohbet geçmişini temizler ve sıfırdan yeni oturum başlatır.
 - `ponytail/` (veya `/ponytail [on|off]`): Lazy Senior Dev modunu açıp kapatır.
 - `exit` (veya `quit`, `/q`): Çıkış yapar.
@@ -140,7 +140,7 @@ In-Chat Commands:
 - `session save/` (or `/session save`): Automatically generates a timestamped session name (or accepts a custom name) and saves it into the project folder (`.lokal_ajan/sessions/`).
 - `session load/` (or `/session load`): Interactively lists saved sessions to select with **UP/DOWN arrow keys (↑ / ↓)**.
 - `session list/` (or `/session list`): Lists all saved sessions for this project.
-- `model/` (or `/model`): Switches the active AI model (conversation history is preserved and transferred to the new model!).
+- `model/` (or `/model`): Switches the active AI model or toggles Orchestrator (Brain+Worker) mode (conversation history is preserved!).
 - `new/` (or `/new`): Resets the session and starts fresh.
 - `ponytail/` (or `/ponytail [on|off]`): Toggles the Lazy Senior Dev coding mode.
 - `exit` (or `quit`, `/q`): Quits the application.
