@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from pathlib import Path
 from pydantic import BaseModel
 
@@ -46,6 +47,7 @@ def save_state(state: dict, path: Path = None):
 class Config(BaseModel):
     default_model: str = "qwen3:1.7b"
     ollama_host: str = "http://localhost:11434"
+    ollama_timeout: Optional[float] = None
     openrouter_api_key: str = os.environ.get("OPENROUTER_API_KEY", "")
     groq_api_key: str = os.environ.get("GROQ_API_KEY", "")
     ninerouter_host: str = "http://localhost:20128/v1"

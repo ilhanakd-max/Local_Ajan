@@ -345,6 +345,7 @@ class AgentLoop:
                         host=self.host,
                         options=options,
                         think=think,
+                        timeout=getattr(self.config, "ollama_timeout", None),
                     )
                 
                 printed_len = 0
@@ -442,7 +443,7 @@ class AgentLoop:
                 if printed_len > 0 and not full_response[:printed_len].endswith("\n"):
                     console.print()
 
-            except (OllamaConnectionError, OpenRouterConnectionError, GroqConnectionError) as e:
+            except (OllamaConnectionError, OpenRouterConnectionError, GroqConnectionError, NineRouterConnectionError) as e:
                 console.print(f"\n[bold red]Hata:[/bold red] {e}")
                 break
             except Exception as e:

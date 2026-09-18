@@ -62,6 +62,24 @@ def free_unused_models(active_model: str, worker_model: Optional[str] = None, ho
 
 
 
+def preload_model(model: str, host: str = "http://localhost:11434") -> bool:
+    """
+    Modeli RAM'e önceden yükler (warmup).
+    Böylece ilk kullanıcı mesajında 'cold start' gecikmesi ve timeout yaşanmaz.
+    Ollama resmi API: boş prompt ile /api/generate çağrısı.
+    """
+    url = f"{host.rstrip('/')}/api/generate"
+    try:
+        resp = httpx.post(
+            url,
+            json={"model": model, "prompt": "", "keep_alive": "5m"},
+            timeout=httpx.Timeout(300.0, connect=5.0)
+        )
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
 def chat_stream(
     messages: List[Dict[str, Any]],
     model: str,
@@ -69,6 +87,7 @@ def chat_stream(
     options: Optional[Dict[str, Any]] = None,
     think: Optional[bool] = None,
     keep_alive: Optional[str] = "5m",
+    timeout: Optional[float] = None,
 ) -> Iterator[str]:
     """
     Send a chat request to Ollama and stream the response text.
@@ -93,8 +112,10 @@ def chat_stream(
     if keep_alive is not None:
         payload["keep_alive"] = keep_alive
 
-    # Use generous timeout for local models (allow 120s between chunks for slow CPU inference)
-    stream_timeout = httpx.Timeout(300.0, connect=10.0, read=120.0)
+    # Yerel modellerde (özellikle CPU'da çalışan 7B+ büyük modellerde) diskten
+    # yüklenme, KV cache tahsisi ve ilk prompt değerlendirmesi (prefill) uzun sürebilir.
+    # Bağlantı için 15s yeterliyken, veri okuma için katı sınır koymamak gerekir.
+    stream_timeout = httpx.Timeout(timeout, connect=15.0, read=timeout)
     try:
         with httpx.stream("POST", url, json=payload, timeout=stream_timeout) as response:
             if response.status_code >= 400:
@@ -123,6 +144,13 @@ def chat_stream(
             f"Ollama'ya bağlanılamadı ({host}). Ollama çalışıyor mu? "
             f"('ollama serve' ile başlatabilirsiniz.) Detay: {e}"
         ) from e
+    except httpx.TimeoutException as e:
+        raise OllamaConnectionError(
+            f"Ollama yanıt vermedi (zaman aşımı / timed out). "
+            f"'{model}' modeli diskten belleğe yüklenirken veya yanıt üretirken gecikti. "
+            f"Büyük modeller CPU üzerinde çalışırken ilk yüklemede uzun sürebilir. "
+            f"Detay: {e}"
+        ) from e
     except httpx.HTTPStatusError as e:
         error_text = ""
         try:
@@ -136,21 +164,26 @@ def chat_stream(
 
 
 def _iter_chat_lines(response: httpx.Response) -> Iterator[str]:
-    for line in response.iter_lines():
-        if not line:
-            continue
-        try:
-            data = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if "error" in data:
-            raise OllamaConnectionError(str(data["error"]))
-        if "message" in data and "content" in data["message"]:
-            content = data["message"]["content"]
-            if content:
-                yield content
-        if data.get("done"):
-            break
+    try:
+        for line in response.iter_lines():
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if "error" in data:
+                raise OllamaConnectionError(str(data["error"]))
+            if "message" in data and "content" in data["message"]:
+                content = data["message"]["content"]
+                if content:
+                    yield content
+            if data.get("done"):
+                break
+    except httpx.TimeoutException as e:
+        raise OllamaConnectionError(
+            f"Ollama yanıt akışı sırasında zaman aşımı oluştu (timed out): {e}"
+        ) from e
 
 
 def chat_once(
@@ -159,7 +192,8 @@ def chat_once(
     host: str = "http://localhost:11434",
     options: Optional[Dict[str, Any]] = None,
     think: Optional[bool] = None,
+    timeout: Optional[float] = None,
 ) -> str:
     """Streaming olmayan, tüm yanıtı biriktirip tek seferde döndüren yardımcı.
     Örn. kısa doğrulama/özetleme çağrıları için kullanılabilir."""
-    return "".join(chat_stream(messages, model, host, options, think))
+    return "".join(chat_stream(messages, model, host, options, think, timeout=timeout))

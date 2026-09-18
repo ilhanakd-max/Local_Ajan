@@ -244,12 +244,24 @@ PROFILES = [
         max_tool_output=25000,
     ),
     ModelProfile(
-        name_pattern=r"nemotron",
-        num_ctx=16384,
-        temperature=0.1,
+        name_pattern=r"lfm(?:2\.5)?[-.:]?\s*8b",
+        num_ctx=8192,
+        temperature=0.15,
         native_tool_call=True,
         prompt_level="standard",
-        max_tool_output=25000,
+        max_tool_output=15000,
+        repeat_penalty=1.1,
+        parse_retry_limit=2,
+    ),
+    ModelProfile(
+        name_pattern=r"lfm",
+        num_ctx=8192,
+        temperature=0.15,
+        native_tool_call=False,
+        prompt_level="minimal",
+        max_tool_output=8000,
+        repeat_penalty=1.15,
+        parse_retry_limit=3,
     ),
 ]
 
@@ -297,11 +309,11 @@ def _size_based_profile(model_name: str, size_b: float) -> ModelProfile:
     if size_b <= 9.0:
         return ModelProfile(
             name_pattern=re.escape(model_name),
-            num_ctx=16384,
+            num_ctx=8192,
             temperature=0.2,
             native_tool_call=True,
             prompt_level="standard" if size_b >= 7 else "minimal",
-            max_tool_output=20000,
+            max_tool_output=15000,
             supports_think_control=is_qwen3,
             disable_thinking=True,
             repeat_penalty=1.1,

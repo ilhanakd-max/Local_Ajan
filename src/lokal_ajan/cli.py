@@ -56,9 +56,19 @@ def switch_model(agent: AgentLoop, config):
     new_profile = get_profile_for_model(new_model)
     agent.update_model(new_model, new_profile)
     
-    from lokal_ajan.llm.ollama_client import free_unused_models
+    from lokal_ajan.llm.ollama_client import free_unused_models, preload_model
     free_unused_models(new_model, agent.worker_model, config.ollama_host)
     
+    # Yerel Ollama modellerinde ilk istekte 'cold-start' ve timeout yaşanmaması için
+    # modeli arka planda önceden RAM'e yüklüyoruz (warmup).
+    if not (new_model.startswith("openrouter/") or new_model.startswith("groq/") or new_model.startswith("ninerouter/")):
+        import threading
+        threading.Thread(
+            target=preload_model,
+            args=(new_model, config.ollama_host),
+            daemon=True
+        ).start()
+
     try:
         from lokal_ajan.config import save_state
         save_state({"model": new_model})
