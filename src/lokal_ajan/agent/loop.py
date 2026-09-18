@@ -251,7 +251,7 @@ class AgentLoop:
         # If orchestrator mode just enabled, ensure delegate_tool is in schema
         if is_orch:
             self._ensure_delegate_tool()
-            self.tools_schema = [registry.get_tool_schema(t) for t in registry.get_all_tool_names() if registry.get_tool(t)]
+            self.tools_schema = registry.get_all_schemas()
             self.tools_schema = [
                 t for t in self.tools_schema 
                 if t.get("name") not in ("write_file", "edit_file", "run_shell")
@@ -259,7 +259,7 @@ class AgentLoop:
             self.tools_schema.append(self.delegate_tool.get_schema())
         else:
             # Rebuild without delegate tool
-            self.tools_schema = [registry.get_tool_schema(t) for t in registry.get_all_tool_names() if registry.get_tool(t)]
+            self.tools_schema = registry.get_all_schemas()
 
         # Rebuild system prompt with updated tools schema
         sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
