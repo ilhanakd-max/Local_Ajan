@@ -59,5 +59,25 @@ class TestOllamaTimeoutAndProfiles(unittest.TestCase):
         self.assertEqual(call_kwargs["json"]["prompt"], "")
 
 
+    @patch("lokal_ajan.llm.ollama_client.httpx.post")
+    def test_get_ollama_model_info_and_dynamic_profile(self, mock_post):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "parameters": "num_ctx 16384\nstop <|im_end|>",
+            "model_info": {"lfm2moe.context_length": 128000}
+        }
+        mock_post.return_value = mock_resp
+
+        from lokal_ajan.llm.ollama_client import get_ollama_model_info
+        info = get_ollama_model_info("test-model", host="http://localhost:11434")
+        self.assertEqual(info.get("num_ctx"), 16384)
+        self.assertEqual(info.get("context_length"), 128000)
+
+        # Dynamic profile should inherit 16384
+        prof = get_profile_for_model("hf.co/mradermacher/LFM2.5-8B-A1B-Coder-i1-GGUF:Q4_K_M", ollama_host="http://localhost:11434")
+        self.assertEqual(prof.num_ctx, 16384)
+
+
 if __name__ == "__main__":
     unittest.main()

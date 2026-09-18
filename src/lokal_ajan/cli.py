@@ -53,7 +53,7 @@ def switch_model(agent: AgentLoop, config):
         ensure_openrouter_key(config)
         agent.config.openrouter_api_key = config.openrouter_api_key
         
-    new_profile = get_profile_for_model(new_model)
+    new_profile = get_profile_for_model(new_model, ollama_host=config.ollama_host)
     agent.update_model(new_model, new_profile)
     
     from lokal_ajan.llm.ollama_client import free_unused_models, preload_model
@@ -207,7 +207,7 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
     if target_model.startswith("openrouter/") or (worker_model and worker_model.startswith("openrouter/")):
         ensure_openrouter_key(config)
         
-    profile = get_profile_for_model(target_model)
+    profile = get_profile_for_model(target_model, ollama_host=config.ollama_host)
     
     if gpu_mode and profile.num_ctx > 8192:
         profile = profile.model_copy(update={"num_ctx": 8192})
@@ -458,7 +458,7 @@ def run_cmd(
     if target_model.startswith("openrouter/") or (worker_model and worker_model.startswith("openrouter/")):
         ensure_openrouter_key(config)
         
-    profile = get_profile_for_model(target_model)
+    profile = get_profile_for_model(target_model, ollama_host=config.ollama_host)
     if gpu_mode and profile.num_ctx > 8192:
         profile = profile.model_copy(update={"num_ctx": 8192})
     

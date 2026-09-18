@@ -21,6 +21,41 @@ def list_ollama_models(host: str = "http://localhost:11434") -> List[str]:
         return []
 
 
+def get_ollama_model_info(model: str, host: str = "http://localhost:11434") -> Dict[str, Any]:
+    """
+    Ollama'nın /api/show endpoint'inden modelin gerçek Modelfile parametrelerini
+    ve mimari bilgilerini çeker (num_ctx, context_length vb.).
+    """
+    url = f"{host.rstrip('/')}/api/show"
+    try:
+        response = httpx.post(url, json={"name": model}, timeout=3.0)
+        if response.status_code == 200:
+            data = response.json()
+            info: Dict[str, Any] = {}
+            
+            # 1. Modelfile / parameters alanından 'num_ctx' ara
+            params = data.get("parameters", "") or data.get("modelfile", "")
+            if params:
+                import re
+                match = re.search(r"num_ctx\s+(\d+)", params)
+                if match:
+                    try:
+                        info["num_ctx"] = int(match.group(1))
+                    except ValueError:
+                        pass
+            
+            # 2. model_info mimari context_length ara
+            for k, v in data.get("model_info", {}).items():
+                if "context_length" in k and isinstance(v, int):
+                    info["context_length"] = v
+                    break
+                    
+            return info
+    except Exception:
+        pass
+    return {}
+
+
 def free_unused_models(active_model: str, worker_model: Optional[str] = None, host: str = "http://localhost:11434"):
     """
     Checks currently running Ollama models via /api/ps.

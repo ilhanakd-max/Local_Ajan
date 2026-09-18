@@ -333,14 +333,32 @@ def _size_based_profile(model_name: str, size_b: float) -> ModelProfile:
     )
 
 
-def get_profile_for_model(model_name: str) -> ModelProfile:
+def get_profile_for_model(model_name: str, ollama_host: Optional[str] = None) -> ModelProfile:
+    target_profile: Optional[ModelProfile] = None
     for profile in PROFILES:
         if re.search(profile.name_pattern, model_name, re.IGNORECASE):
-            return profile
+            target_profile = profile
+            break
 
-    size_b = _extract_size_b(model_name)
-    if size_b is not None:
-        return _size_based_profile(model_name, size_b)
+    if target_profile is None:
+        size_b = _extract_size_b(model_name)
+        if size_b is not None:
+            target_profile = _size_based_profile(model_name, size_b)
+        else:
+            target_profile = DEFAULT_PROFILE
 
-    return DEFAULT_PROFILE
+    # Eğer ollama_host verilmişse ve harici bir API modeli değilse,
+    # modelin Ollama'daki gerçek Modelfile parametrelerini kontrol et
+    if ollama_host and not any(model_name.startswith(p) for p in ("openrouter/", "groq/", "ninerouter/")):
+        try:
+            from lokal_ajan.llm.ollama_client import get_ollama_model_info
+            info = get_ollama_model_info(model_name, host=ollama_host)
+            real_ctx = info.get("num_ctx")
+            if real_ctx and real_ctx > 0:
+                # Modelfile'da açıkça tanımlanmış bir num_ctx varsa onu kullan
+                target_profile = target_profile.model_copy(update={"num_ctx": real_ctx})
+        except Exception:
+            pass
+
+    return target_profile
 

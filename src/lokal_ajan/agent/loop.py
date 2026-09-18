@@ -93,7 +93,7 @@ class AgentLoop:
                     worker = None
 
                     for attempt in range(max_attempts + 1):
-                        worker_profile = get_profile_for_model(self.parent_agent.worker_model)
+                        worker_profile = get_profile_for_model(self.parent_agent.worker_model, ollama_host=self.parent_agent.host)
                         if self.parent_agent.gpu_mode and worker_profile.num_ctx > 8192:
                             worker_profile = worker_profile.model_copy(update={"num_ctx": 8192})
 
