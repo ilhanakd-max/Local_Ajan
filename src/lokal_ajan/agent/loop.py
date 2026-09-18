@@ -49,126 +49,132 @@ class AgentLoop:
 
         self.delegate_tool = None
         if self.worker_model:
-            from pydantic import BaseModel, Field
-            from lokal_ajan.tools.base import BaseTool
+            self._ensure_delegate_tool()
+
+    def _ensure_delegate_tool(self):
+        if self.delegate_tool is not None:
+            return
             
-            class DelegateTaskArgs(BaseModel):
-                task: str = Field(description="The complex coding or file operation task to delegate to the worker model.")
+        from pydantic import BaseModel, Field
+        from lokal_ajan.tools.base import BaseTool
+        import os
+        
+        class DelegateTaskArgs(BaseModel):
+            task: str = Field(description="The complex coding or file operation task to delegate to the worker model.")
+            
+        class DelegateTaskTool(BaseTool):
+            name = "delegate_task"
+            description = "Delegate a task to the worker model. Useful for complex coding or running shell commands."
+            args_schema = DelegateTaskArgs
+            requires_confirm = False
+            
+            def __init__(self, parent_agent):
+                self.parent_agent = parent_agent
                 
-            class DelegateTaskTool(BaseTool):
-                name = "delegate_task"
-                description = "Delegate a task to the worker model. Useful for complex coding or running shell commands."
-                args_schema = DelegateTaskArgs
-                requires_confirm = False
-                
-                def __init__(self, parent_agent):
-                    self.parent_agent = parent_agent
-                    
-                def _snapshot_files(self) -> set:
-                    """Set of absolute paths currently present in the workdir."""
-                    import os
-                    files = set()
-                    workdir = self.parent_agent.workdir
-                    if os.path.isdir(workdir):
-                        for root, _dirs, fnames in os.walk(workdir):
-                            for fn in fnames:
-                                files.add(os.path.normpath(os.path.join(root, fn)))
-                    return files
-                
-                def _worker_note(self, worker) -> str:
-                    """Returns the worker's final assistant message (skipping raw tool-call text)."""
-                    messages = worker.history.get_messages()
-                    for msg in reversed(messages):
-                        if msg["role"] == "assistant":
-                            content = (msg.get("content") or "").strip()
-                            if content and "<tool_call>" not in content:
-                                return content[:2000]
-                    return "İşçi model yanıt döndürmedi."
-                
-                def run(self, task: str):
-                    from lokal_ajan.llm.model_profiles import get_profile_for_model
-                    console.print(f"\n[bold magenta]🛠️ İşçi Ajan Başlıyor ({self.parent_agent.worker_model})[/bold magenta]")
-                    console.print(f"[dim]Görev: {task}[/dim]\n")
+            def _snapshot_files(self) -> set:
+                """Set of absolute paths currently present in the workdir."""
+                files = set()
+                workdir = self.parent_agent.workdir
+                if os.path.isdir(workdir):
+                    for root, _dirs, fnames in os.walk(workdir):
+                        for fn in fnames:
+                            files.add(os.path.normpath(os.path.join(root, fn)))
+                return files
+            
+            def _worker_note(self, worker) -> str:
+                """Returns the worker's final assistant message (skipping raw tool-call text)."""
+                messages = worker.history.get_messages()
+                for msg in reversed(messages):
+                    if msg["role"] == "assistant":
+                        content = (msg.get("content") or "").strip()
+                        if content and "<tool_call>" not in content:
+                            return content[:2000]
+                return "İşçi model yanıt döndürmedi."
+            
+            def run(self, task: str):
+                from lokal_ajan.llm.model_profiles import get_profile_for_model
+                console.print(f"\n[bold magenta]🛠️ İşçi Ajan Başlıyor ({self.parent_agent.worker_model})[/bold magenta]")
+                console.print(f"[dim]Görev: {task}[/dim]\n")
 
-                    max_attempts = self.parent_agent.config.worker_max_retries
-                    worker = None
+                max_attempts = self.parent_agent.config.worker_max_retries
+                worker = None
 
-                    for attempt in range(max_attempts + 1):
-                        worker_profile = get_profile_for_model(self.parent_agent.worker_model, ollama_host=self.parent_agent.host)
-                        if self.parent_agent.gpu_mode and worker_profile.num_ctx > 8192:
-                            worker_profile = worker_profile.model_copy(update={"num_ctx": 8192})
+                for attempt in range(max_attempts + 1):
+                    worker_profile = get_profile_for_model(self.parent_agent.worker_model, ollama_host=self.parent_agent.host)
+                    if self.parent_agent.gpu_mode and worker_profile.num_ctx > 8192:
+                        worker_profile = worker_profile.model_copy(update={"num_ctx": 8192})
 
-                        worker = AgentLoop(
-                            model_name=self.parent_agent.worker_model,
-                            profile=worker_profile,
-                            host=self.parent_agent.host,
-                            workdir=self.parent_agent.workdir,
-                            config=self.parent_agent.config,
-                            auto_confirm=True,  # Orkestratör modunda işçi ajan her zaman otomatik onay
-                            gpu_mode=self.parent_agent.gpu_mode,
-                            ponytail_enabled=self.parent_agent.ponytail_enabled,
-                        )
-
-
-                        before = self._snapshot_files()
-                        try:
-                            worker_ok = worker.run_step(task)
-                        except Exception as e:
-                            console.print(f"[bold red]İşçi çalışırken hata: {e}[/bold red]")
-                            return f"İşçi model çalışırken hata oluştu: {e}"
-                        after = self._snapshot_files()
-                        created = sorted(after - before)
-                        modified = sorted(
-                            p for p in (after & before)
-                            if p not in created
-                        )
-
-                        note = self._worker_note(worker)
-
-                        # Başarı: yeni/değiştirilmiş dosya var VEYA worker
-                        # açıkça bir eylem gerçekleştirdiğini bildirdi.
-                        if created or modified:
-                            summary = []
-                            if created:
-                                summary.append(
-                                    "Oluşturulan dosyalar:\n"
-                                    + "\n".join(f"  - {c}" for c in created)
-                                )
-                            if modified:
-                                summary.append(
-                                    "Değiştirilen dosyalar:\n"
-                                    + "\n".join(f"  - {m}" for m in modified)
-                                )
-                            return (
-                                "İşçi model görevi tamamladı.\n"
-                                + "\n".join(summary)
-                                + f"\nİşçi notu:\n{note}"
-                            )
-
-                        if attempt < max_attempts:
-                            console.print(
-                                f"[bold red]⚠ İşçi hiçbir dosya oluşturmadı/değiştirmedi "
-                                f"({attempt + 1}/{max_attempts}). "
-                                f"İşçiye görev yeniden zorla veriliyor...[/bold red]"
-                            )
-                            task = (
-                                f"Önceki denemende hiçbir dosya oluşturulmadı. "
-                                f"Dosyaları MUTLAKA oluşturmalısın: kodu sadece göstermek yetmez, "
-                                f"write_file aracını kullanarak dosyaları kaydet. Görev: {task}"
-                            )
-
-                    note = self._worker_note(worker) if worker else "işçi başlatılamadı"
-                    return (
-                        f"⚠ İşçi model görevi tamamlayamadı: {max_attempts + 1} denemede "
-                        f"hiçbir dosya oluşturulmadı/değiştirmedi. Son işçi notu:\n{note}"
+                    worker = AgentLoop(
+                        model_name=self.parent_agent.worker_model,
+                        profile=worker_profile,
+                        host=self.parent_agent.host,
+                        workdir=self.parent_agent.workdir,
+                        config=self.parent_agent.config,
+                        auto_confirm=True,  # Orkestratör modunda işçi ajan her zaman otomatik onay
+                        gpu_mode=self.parent_agent.gpu_mode,
+                        ponytail_enabled=self.parent_agent.ponytail_enabled,
                     )
-            
-            self.delegate_tool = DelegateTaskTool(self)
-            self.tools_schema = [
-                t for t in self.tools_schema 
-                if t.get("name") not in ("write_file", "edit_file", "run_shell")
-            ]
-            self.tools_schema.append(self.delegate_tool.get_schema())
+
+
+                    before = self._snapshot_files()
+                    try:
+                        worker_ok = worker.run_step(task)
+                    except Exception as e:
+                        console.print(f"[bold red]İşçi çalışırken hata: {e}[/bold red]")
+                        return f"İşçi model çalışırken hata oluştu: {e}"
+                    after = self._snapshot_files()
+                    created = sorted(after - before)
+                    modified = sorted(
+                        p for p in (after & before)
+                        if p not in created
+                    )
+
+                    note = self._worker_note(worker)
+
+                    # Başarı: yeni/değiştirilmiş dosya var VEYA worker
+                    # açıkça bir eylem gerçekleştirdiğini bildirdi.
+                    if created or modified:
+                        summary = []
+                        if created:
+                            summary.append(
+                                "Oluşturulan dosyalar:\n"
+                                + "\n".join(f"  - {c}" for c in created)
+                            )
+                        if modified:
+                            summary.append(
+                                "Değiştirilen dosyalar:\n"
+                                + "\n".join(f"  - {m}" for m in modified)
+                            )
+                        return (
+                            "İşçi model görevi tamamladı.\n"
+                            + "\n".join(summary)
+                            + f"\nİşçi notu:\n{note}"
+                        )
+
+                    if attempt < max_attempts:
+                        console.print(
+                            f"[bold red]⚠ İşçi hiçbir dosya oluşturmadı/değiştirmedi "
+                            f"({attempt + 1}/{max_attempts}). "
+                            f"İşçiye görev yeniden zorla veriliyor...[/bold red]"
+                        )
+                        task = (
+                            f"Önceki denemende hiçbir dosya oluşturulmadı. "
+                            f"Dosyaları MUTLAKA oluşturmalısın: kodu sadece göstermek yetmez, "
+                            f"write_file aracını kullanarak dosyaları kaydet. Görev: {task}"
+                        )
+
+                note = self._worker_note(worker) if worker else "işçi başlatılamadı"
+                return (
+                    f"⚠ İşçi model görevi tamamlayamadı: {max_attempts + 1} denemede "
+                    f"hiçbir dosya oluşturulmadı/değiştirmedi. Son işçi notu:\n{note}"
+                )
+        
+        self.delegate_tool = DelegateTaskTool(self)
+        self.tools_schema = [
+            t for t in self.tools_schema 
+            if t.get("name") not in ("write_file", "edit_file", "run_shell")
+        ]
+        self.tools_schema.append(self.delegate_tool.get_schema())
 
         # Set system prompt
         is_orch = bool(self.worker_model)
@@ -229,6 +235,37 @@ class AgentLoop:
             messages[0]["content"] = sys_prompt
         else:
             self.history.messages.insert(0, {"role": "system", "content": sys_prompt})
+        self.save_current_session()
+
+    def update_worker_model(self, new_worker_model: Optional[str]):
+        """Updates the worker model for orchestrator mode and synchronizes the system prompt."""
+        self.worker_model = new_worker_model
+        is_orch = bool(self.worker_model)
+        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        messages = self.history.get_messages()
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = sys_prompt
+        else:
+            self.history.messages.insert(0, {"role": "system", "content": sys_prompt})
+        
+        # If orchestrator mode just enabled, ensure delegate_tool is in schema
+        if is_orch:
+            self._ensure_delegate_tool()
+            self.tools_schema = [registry.get_tool_schema(t) for t in registry.get_all_tool_names() if registry.get_tool(t)]
+            self.tools_schema = [
+                t for t in self.tools_schema 
+                if t.get("name") not in ("write_file", "edit_file", "run_shell")
+            ]
+            self.tools_schema.append(self.delegate_tool.get_schema())
+        else:
+            # Rebuild without delegate tool
+            self.tools_schema = [registry.get_tool_schema(t) for t in registry.get_all_tool_names() if registry.get_tool(t)]
+
+        # Rebuild system prompt with updated tools schema
+        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = sys_prompt
+        
         self.save_current_session()
 
     def toggle_ponytail(self, state: bool):

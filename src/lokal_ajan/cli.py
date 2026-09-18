@@ -45,8 +45,22 @@ def switch_model(agent: AgentLoop, config):
     else:
         new_model = val
     
-    if new_model == agent.model_name:
-        console.print(f"[dim]Zaten [green]{new_model}[/green] kullanılıyor.[/dim]")
+    
+    worker_choice = Prompt.ask("\nİşçi (Worker) model numarasını veya adını seçin (Orkestratör modunu kapatmak için boş bırakın)")
+    new_worker_model = None
+    if worker_choice.strip():
+        val_w = worker_choice.strip()
+        if val_w.isdigit():
+            idx_w = int(val_w) - 1
+            if 0 <= idx_w < len(all_models):
+                new_worker_model = all_models[idx_w]
+            else:
+                console.print("[bold red]Geçersiz seçim numarası, Orkestratör modu kapatılıyor.[/bold red]")
+        else:
+            new_worker_model = val_w
+
+    if new_model == agent.model_name and new_worker_model == agent.worker_model:
+        console.print(f"[dim]Zaten [green]{new_model}[/green] (Ana) ve [green]{new_worker_model or 'Yok'}[/green] (İşçi) kullanılıyor.[/dim]")
         return
     
     if new_model.startswith("openrouter/"):
@@ -54,10 +68,12 @@ def switch_model(agent: AgentLoop, config):
         agent.config.openrouter_api_key = config.openrouter_api_key
         
     new_profile = get_profile_for_model(new_model, ollama_host=config.ollama_host)
+    
     agent.update_model(new_model, new_profile)
+    agent.update_worker_model(new_worker_model)
     
     from lokal_ajan.llm.ollama_client import free_unused_models, preload_model
-    free_unused_models(new_model, agent.worker_model, config.ollama_host)
+    free_unused_models(new_model, new_worker_model, config.ollama_host)
     
     # Yerel Ollama modellerinde ilk istekte 'cold-start' ve timeout yaşanmaması için
     # modeli arka planda önceden RAM'e yüklüyoruz (warmup).
@@ -71,11 +87,21 @@ def switch_model(agent: AgentLoop, config):
 
     try:
         from lokal_ajan.config import save_state
-        save_state({"model": new_model})
+        state_data = {"model": new_model}
+        if new_worker_model:
+            state_data["worker_model"] = new_worker_model
+            state_data["orchestrator"] = True
+        else:
+            state_data["worker_model"] = None
+            state_data["orchestrator"] = False
+        save_state(state_data)
     except Exception:
         pass
     
-    console.print(f"\n[bold green]✓[/bold green] Model değiştirildi: [green]{new_model}[/green] (Context: {new_profile.num_ctx}, Temp: {new_profile.temperature})")
+    if new_worker_model:
+        console.print(f"\n[bold green]✓[/bold green] Orkestratör modu aktif edildi.\nBeyin: [green]{new_model}[/green]\nİşçi: [green]{new_worker_model}[/green]")
+    else:
+        console.print(f"\n[bold green]✓[/bold green] Model değiştirildi: [green]{new_model}[/green] (Context: {new_profile.num_ctx}, Temp: {new_profile.temperature})")
     console.print("[dim]Sistem promptu yeni profile göre güncellendi, sohbete devam edebilirsiniz.[/dim]\n")
 
 _prompt_session = None
@@ -191,7 +217,10 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
     from lokal_ajan.config import load_state, save_state
     saved = load_state()
     saved_model = saved.get("model")
+    saved_worker_model = saved.get("worker_model")
     target_model = model or saved_model or config.default_model
+    if worker_model is None:
+        worker_model = saved_worker_model
 
     # If target_model is an Ollama model, check if it exists or fallback to an installed one
     if not target_model.startswith("openrouter/") and not target_model.startswith("groq/"):
