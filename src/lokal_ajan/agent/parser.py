@@ -243,12 +243,11 @@ def _extract_code_files_with_names(text: str) -> list:
             continue
         start, end = m.start(), m.end()
         # Look at text just before the block (headings usually live there) ...
-        prefix = text[max(0, start - 500):start]
-        # ... and just after it (for "save this as `x.html`"), stopping at the
-        # next code fence so we don't grab the next section's filename.
+        prefix = text[max(0, start - 1000):start]
+        # ... and after it (for "save this as `x.html`" or "Dosyayı `x.html` olarak kaydedin"),
+        # stopping at the next code fence so we don't grab the next section's filename.
         next_fence = text.find("```", end + 3)
-        suffix_end = next_fence if next_fence != -1 else min(len(text), end + 300)
-        suffix = text[end:suffix_end]
+        suffix = text[end:next_fence] if next_fence != -1 else text[end:]
         filename = _nearest_filename(prefix, suffix)
         if filename and filename not in seen:
             seen.add(filename)
@@ -258,13 +257,13 @@ def _extract_code_files_with_names(text: str) -> list:
 def _nearest_filename(prefix: str, suffix: str) -> Optional[str]:
     """Find the filename closest to a code block: the last one before it,
     falling back to the first one after it."""
-    # Last filename in the prefix (closest to the block start)
+    # 1. Last filename in the prefix (closest to the block start)
     match = None
     for match in re.finditer(r"[`'\"( ](" + _FILENAME_RE + r")[`'\")\s]?", prefix, re.IGNORECASE):
         pass
     if match:
         return match.group(1)
-    # First filename in the suffix (e.g. "save this code as `saat.html`")
+    # 2. First filename in the suffix (e.g. "save this code as `saat.html`" or "Dosyayı `ajanda.html` olarak kaydedin")
     match = re.search(r"[`'\"( ](" + _FILENAME_RE + r")[`'\")\s]?", suffix, re.IGNORECASE)
     if match:
         return match.group(1)

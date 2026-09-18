@@ -64,6 +64,27 @@ Please save this code as `saat.html`."""
     assert args["path"] == "saat.html"
     assert "<title>Clock</title>" in args["content"]
 
+def test_strategy_6_turkish_instructions_after_block():
+    text = """```html
+<!DOCTYPE html>
+<html><head><title>Ajanda</title></head><body></body></html>
+```
+
+## Özellikler:
+| Tablo | Açıklama |
+|---|---|
+| Bilgi | Detay |
+
+### Nasıl Kullanılır?
+1. Dosyayı `ajanda.html` olarak kaydedin ve tarayıcınızda açın.
+"""
+    result = extract_tool_call(text)
+    assert result is not None, f"Failed to extract ajanda.html: {result}"
+    tool, args = result
+    assert tool == "write_file"
+    assert args["path"] == "ajanda.html"
+    assert "<title>Ajanda</title>" in args["content"]
+
 def test_ignore_already_created_summary_text():
     """When the model replies after executing write_file, it summaries the code created. This should NOT trigger write_file again."""
     text = """The file "merhaba.html" has been successfully created with the greeting message. Here's the content:
@@ -234,6 +255,7 @@ if __name__ == "__main__":
         test_extract_raw_function_call,
         test_ignore_js_functions_in_html_codeblock,
         test_strategy_6_conversational_code_saving,
+        test_strategy_6_turkish_instructions_after_block,
         test_ignore_already_created_summary_text,
         test_extract_markdown_json_simple,
         test_extract_markdown_json_with_nested_braces,
