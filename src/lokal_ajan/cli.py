@@ -1,15 +1,27 @@
+from typing import Optional, List
 import typer
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 from rich.prompt import Prompt
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.formatted_text import HTML
 import os
-from lokal_ajan.config import load_config
-from lokal_ajan.llm.model_profiles import get_profile_for_model, PROFILES
+
+from lokal_ajan.config import load_config, save_state, load_state
 from lokal_ajan.agent.loop import AgentLoop
+from lokal_ajan.llm.model_profiles import get_profile_for_model, PROFILES
 from lokal_ajan.ui.console import console
 
-app = typer.Typer(help="Ollama tabanlı lokal agentic CLI aracı")
+# Setup i18n
+from lokal_ajan.i18n import load_lang, CURRENT_LANG, translate
+from lokal_ajan.i18n_patch import patch_rich
+saved_state = load_state()
+load_lang(saved_state.get("language", "en"))
+patch_rich()
+
+app = typer.Typer(add_completion=False)
 
 def switch_model(agent: AgentLoop, config):
     """Ollama ve Harici API modellerini listele ve kullanıcının seçtiği modele geç."""
@@ -214,7 +226,8 @@ def show_help():
     table.add_row("session save/  veya  /session save", "Oturumu otomatik isimle (veya /session save <ad>) kaydeder.")
     table.add_row("session load/  veya  /session load", "Kayıtlı oturumları ok tuşlarıyla (↑ / ↓) seçip yükler.")
     table.add_row("session list/  veya  /session list", "Projedeki tüm kayıtlı oturumları listeler.")
-    table.add_row("model/  veya  /model", "Modeli değiştirir (sohbet geçmişi korunarak aktarılır).")
+    table.add_row("model/  veya  /model", "Modeli değiştirir veya Orkestratör modunu (Beyin+İşçi) açıp kapatır (sohbet geçmişi korunur!).")
+    table.add_row("language/  veya  /language", "Uygulama dilini İngilizce/Türkçe olarak değiştirir.")
     table.add_row("new/  veya  /new", "Mevcut sohbeti ve oturumu sıfırlayıp temiz sayfa açar.")
     table.add_row("ponytail/  veya  /ponytail", "Tembel Kıdemli Yazılımcı (minimalist kod) modunu açar/kapatır.")
     table.add_row("exit  veya  quit,  /q", "Uygulamadan çıkar.")
@@ -485,6 +498,17 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
                 pass
             continue
         
+        if norm in ("language", "lang", "/language", "/lang"):
+            from lokal_ajan.i18n import CURRENT_LANG
+            new_lang = "tr" if CURRENT_LANG == "en" else "en"
+            state_data["language"] = new_lang
+            try:
+                save_state(state_data)
+            except Exception:
+                pass
+            console.print(f"\n[bold green]✓[/bold green] Dil değiştirildi: [bold]{new_lang.upper()}[/bold]. Uygulamayı yeniden başlatmanız önerilir.\n")
+            continue
+            
         if norm in ("model", "models"):
             switch_model(agent, config)
             continue

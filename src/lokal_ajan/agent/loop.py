@@ -15,6 +15,9 @@ from lokal_ajan.llm.groq_client import chat_stream as groq_chat_stream, GroqConn
 from lokal_ajan.agent.context import truncate_tool_output, prepare_context
 from rich.console import Console
 
+from lokal_ajan.i18n_patch import patch_rich
+patch_rich()
+
 console = Console()
 
 class AgentLoop:

@@ -72,6 +72,7 @@ Terminal içi komutlar:
 - `session load/` (veya `/session load`): Projedeki kayıtlı oturumları **yukarı/aşağı ok tuşlarıyla (↑ / ↓)** etkileşimli menüden seçip yükler.
 - `session list/` (veya `/session list`): Projede kaydedilmiş oturumları listeler.
 - `model/` (veya `/model`): Kullanılan yapay zeka modelini değiştirir veya Orkestratör modunu (Beyin+İşçi) açıp kapatır (sohbet geçmişi korunur!).
+- `language/` (veya `/language`, `/lang`): Uygulama dilini İngilizce/Türkçe olarak değiştirir (varsayılan: İngilizce).
 - `new/` (veya `/new`): Sohbet geçmişini temizler ve sıfırdan yeni oturum başlatır.
 - `ponytail/` (veya `/ponytail [on|off]`): Lazy Senior Dev modunu açıp kapatır.
 - `exit` (veya `quit`, `/q`): Çıkış yapar.
@@ -141,6 +142,7 @@ In-Chat Commands:
 - `session load/` (or `/session load`): Interactively lists saved sessions to select with **UP/DOWN arrow keys (↑ / ↓)**.
 - `session list/` (or `/session list`): Lists all saved sessions for this project.
 - `model/` (or `/model`): Switches the active AI model or toggles Orchestrator (Brain+Worker) mode (conversation history is preserved!).
+- `language/` (or `/language`, `/lang`): Toggles the application language between English and Turkish (default: English).
 - `new/` (or `/new`): Resets the session and starts fresh.
 - `ponytail/` (or `/ponytail [on|off]`): Toggles the Lazy Senior Dev coding mode.
 - `exit` (or `quit`, `/q`): Quits the application.
