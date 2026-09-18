@@ -31,6 +31,7 @@ class AgentLoop:
         self.ponytail_enabled = ponytail_enabled
         self.session_name = session_name
         self._last_call_key = None
+        self._last_call_success = False
 
         
         # Initialize shell tool with workdir, and ensure existing tool instance has updated workdir
@@ -184,6 +185,7 @@ class AgentLoop:
         sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
         self.history.add_message("system", sys_prompt)
         self._last_call_key = None
+        self._last_call_success = False
         try:
             from lokal_ajan.agent.session import delete_session
             delete_session(self.workdir, self.session_name)
@@ -292,6 +294,7 @@ class AgentLoop:
             
         self.history.add_message("user", user_input)
         self._last_call_key = None
+        self._last_call_success = False
         step_executed_calls: dict = {}
         
         step_count = 0
@@ -501,6 +504,28 @@ class AgentLoop:
                 else:
                     console.print("[bold red]Model tekrar tekrar boş yanıt üretti, döngü durduruldu.[/bold red]")
                     break
+
+            # Detect LFM empty tool-call tags: <|tool_call_start|><|tool_call_end|>
+            # These are non-empty strings but contain no real content — treat as empty.
+            _stripped_resp = re.sub(r"<\|tool_call_start\|>\s*<\|tool_call_end\|>", "", full_response).strip()
+            if not all_tool_calls and not _stripped_resp:
+                parse_fail_count += 1
+                step_count += 1
+                if parse_fail_count <= self.profile.parse_retry_limit:
+                    console.print(
+                        "[dim]Model boş tool çağrısı üretti, düzeltme isteği gönderiliyor "
+                        f"({parse_fail_count}/{self.profile.parse_retry_limit})...[/dim]"
+                    )
+                    self.history.add_message(
+                        "user",
+                        "You produced empty tool call tags with no content. "
+                        "Either produce a valid <tool_call> block with a tool name and arguments, "
+                        "or write a short answer to the user. Do NOT produce empty tool call tags.",
+                    )
+                    continue
+                else:
+                    console.print("[bold red]Model tekrar tekrar boş yanıt üretti, döngü durduruldu.[/bold red]")
+                    break
             
             if all_tool_calls:
                 if len(all_tool_calls) > 1:
@@ -559,9 +584,10 @@ class AgentLoop:
                             )
                             batch_aborted = True
                             break
-                    step_executed_calls[call_sig] = 1
+                    # NOTE: step_executed_calls is set AFTER successful execution (below)
+                    # Failed calls are NOT recorded so the model can retry with corrected params.
 
-                    if call_key == self._last_call_key:
+                    if call_key == self._last_call_key and self._last_call_success:
                         self._repeat_count += 1
                         if self._repeat_count < 2:
                             console.print(
@@ -617,17 +643,37 @@ class AgentLoop:
                                     # For fs tools, we might want to check path safety
                                     if "path" in validated_args:
                                         from lokal_ajan.safety.sandbox import get_safe_path
-                                        validated_args["path"] = get_safe_path(validated_args["path"], self.workdir)
+                                        try:
+                                            validated_args["path"] = get_safe_path(validated_args["path"], self.workdir)
+                                        except ValueError:
+                                            result = (
+                                                f"Error: Path '{validated_args['path']}' is outside the workspace. "
+                                                f"Use RELATIVE paths like 'file.html' or './subdir/file.txt' instead of absolute paths. "
+                                                f"Your workspace is '{self.workdir}', all paths must be relative to it."
+                                            )
+                                            result = str(result)
+                                            summary = result[:300] + ("..." if len(result) > 300 else "")
+                                            console.print(f"[dim]Tool Sonucu:\n{summary}[/dim]")
+                                            all_results.append(f"'{tool_name}' → {result}")
+                                            self._last_call_success = False
+                                            step_count += 1
+                                            continue
                                         
                                     result = tool.run(**validated_args)
                                 except Exception as e:
                                     result = f"Error executing tool: {e}"
                             
                         result = str(result)
+                        is_error = result.startswith("Error")
+                        self._last_call_success = not is_error
                         result = truncate_tool_output(result, self.profile.max_tool_output)
                         summary = result[:300] + ("..." if len(result) > 300 else "")
                         console.print(f"[dim]Tool Sonucu:\n{summary}[/dim]")
                         all_results.append(f"'{tool_name}' → {result}")
+                        # Only record successful calls in repeat guard — failed calls
+                        # should be retryable with corrected parameters
+                        if not is_error:
+                            step_executed_calls[call_sig] = 1
                         step_count += 1
                     else:
                         error_msg = f"Hata: '{tool_name}' adında bir araç bulunamadı."
