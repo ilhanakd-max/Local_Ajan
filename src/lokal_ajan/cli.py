@@ -185,6 +185,7 @@ def show_help():
 
 
 def start_interactive_session(model: str, workdir: str, worker_model: str = None, gpu_mode: bool = False, session_name: str = "default", new_session: bool = False):
+    workdir = os.path.abspath(workdir)
     config = load_config()
     
     from lokal_ajan.config import load_state, save_state
@@ -258,8 +259,7 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
         saved = load_state()
         ponytail_enabled = saved.get("ponytail", False)
         
-        abs_workdir = os.path.abspath(workdir)
-        state_data = {"workdir": abs_workdir, "model": target_model, "gpu_mode": gpu_mode, "ponytail": ponytail_enabled}
+        state_data = {"workdir": workdir, "model": target_model, "gpu_mode": gpu_mode, "ponytail": ponytail_enabled}
         if worker_model:
             state_data["worker_model"] = worker_model
             state_data["orchestrator"] = True
@@ -452,6 +452,7 @@ def run_cmd(
     """
     Tek seferlik (non-interactive) görev çalıştır.
     """
+    workdir = os.path.abspath(workdir)
     config = load_config()
     target_model = model or config.default_model
     
