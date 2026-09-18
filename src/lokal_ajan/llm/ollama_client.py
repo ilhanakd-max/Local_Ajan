@@ -72,7 +72,7 @@ def preload_model(model: str, host: str = "http://localhost:11434") -> bool:
     try:
         resp = httpx.post(
             url,
-            json={"model": model, "prompt": "", "keep_alive": "5m"},
+            json={"model": model, "prompt": "", "keep_alive": "30m"},
             timeout=httpx.Timeout(300.0, connect=5.0)
         )
         return resp.status_code == 200
@@ -86,7 +86,7 @@ def chat_stream(
     host: str = "http://localhost:11434",
     options: Optional[Dict[str, Any]] = None,
     think: Optional[bool] = None,
-    keep_alive: Optional[str] = "5m",
+    keep_alive: Optional[str] = "30m",
     timeout: Optional[float] = None,
 ) -> Iterator[str]:
     """
@@ -144,23 +144,26 @@ def chat_stream(
             f"Ollama'ya bağlanılamadı ({host}). Ollama çalışıyor mu? "
             f"('ollama serve' ile başlatabilirsiniz.) Detay: {e}"
         ) from e
-    except httpx.TimeoutException as e:
-        raise OllamaConnectionError(
-            f"Ollama yanıt vermedi (zaman aşımı / timed out). "
-            f"'{model}' modeli diskten belleğe yüklenirken veya yanıt üretirken gecikti. "
-            f"Büyük modeller CPU üzerinde çalışırken ilk yüklemede uzun sürebilir. "
-            f"Detay: {e}"
-        ) from e
-    except httpx.HTTPStatusError as e:
-        error_text = ""
-        try:
-            e.response.read()
-            error_text = e.response.text[:300]
-        except Exception:
-            pass
-        raise OllamaConnectionError(
-            f"Ollama hata döndürdü ({e.response.status_code}): {error_text}"
-        ) from e
+    except Exception as e:
+        if isinstance(e, httpx.TimeoutException) or "time" in str(e).lower() or "out" in str(e).lower():
+            raise OllamaConnectionError(
+                f"Ollama yanıt vermedi (zaman aşımı / timed out). "
+                f"'{model}' modeli diskten belleğe yüklenirken veya yanıt üretirken gecikti. "
+                f"Büyük modeller CPU üzerinde çalışırken ilk yüklemede uzun sürebilir. "
+                f"Detay: {e}"
+            ) from e
+        if isinstance(e, httpx.HTTPStatusError):
+            error_text = ""
+            try:
+                e.response.read()
+                error_text = e.response.text[:300]
+            except Exception:
+                pass
+            raise OllamaConnectionError(
+                f"Ollama hata döndürdü ({e.response.status_code}): {error_text}"
+            ) from e
+        raise OllamaConnectionError(f"Ollama bağlantı hatası: {e}") from e
+
 
 
 def _iter_chat_lines(response: httpx.Response) -> Iterator[str]:
@@ -180,10 +183,12 @@ def _iter_chat_lines(response: httpx.Response) -> Iterator[str]:
                     yield content
             if data.get("done"):
                 break
-    except httpx.TimeoutException as e:
-        raise OllamaConnectionError(
-            f"Ollama yanıt akışı sırasında zaman aşımı oluştu (timed out): {e}"
-        ) from e
+    except Exception as e:
+        if isinstance(e, httpx.TimeoutException) or "time" in str(e).lower() or "out" in str(e).lower():
+            raise OllamaConnectionError(
+                f"Ollama yanıt akışı sırasında zaman aşımı oluştu (timed out): {e}"
+            ) from e
+        raise OllamaConnectionError(f"Ollama stream okuma hatası: {e}") from e
 
 
 def chat_once(
