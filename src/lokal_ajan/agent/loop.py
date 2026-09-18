@@ -446,6 +446,18 @@ class AgentLoop:
             except (OllamaConnectionError, OpenRouterConnectionError, GroqConnectionError, NineRouterConnectionError) as e:
                 console.print(f"\n[bold red]Hata:[/bold red] {e}")
                 break
+            except (TimeoutError, OSError) as e:
+                # OS seviyesinde soket timeout'u: httpx bu istisnayı her zaman
+                # kendi TimeoutException'ına sarmayabiliyor (özellikle streaming
+                # generator'ları içinde). Büyük modellerin CPU'da uzun prefill
+                # süresi bu hataya yol açar.
+                console.print(
+                    f"\n[bold red]Hata:[/bold red] Ollama yanıt vermedi (zaman aşımı). "
+                    f"'{self.model_name}' modeli CPU üzerinde çalışırken uzun sürebilir. "
+                    f"Daha küçük bir model veya daha kısa bir prompt deneyin.\n"
+                    f"[dim]Detay: {e}[/dim]"
+                )
+                break
             except Exception as e:
                 console.print(f"\n[bold red]Hata:[/bold red] LLM ile iletişim kurulamadı: {e}")
                 break
