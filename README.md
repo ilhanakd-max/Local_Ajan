@@ -1,9 +1,10 @@
 <div align="center">
 
-# LocAi / LocAi
+# LocAi
 **Terminal Tabanlı Agentic LLM Asistanı | Terminal-based Agentic LLM Assistant**
 
 ![LocAi Ekran Görüntüsü](assets/screenshot.png)
+![LocAi Model Menu](assets/screenshot_menu.png)
 
 [Türkçe](#türkçe-kılavuz) | [English](#english-guide)
 
