@@ -5,6 +5,7 @@
 
 ![LocAi Ekran Görüntüsü](assets/screenshot.png)
 ![LocAi Model Menu](assets/screenshot_menu.png)
+![LocAi Tool Execution](assets/screenshot_tool.png)
 
 [Türkçe](#türkçe-kılavuz) | [English](#english-guide)
 

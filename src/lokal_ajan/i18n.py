@@ -117,6 +117,7 @@ REGEX_EN_DICT = [
     (r"Sohbet geçmişi aktarılıyor\.\.\.", "Transferring chat history..."),
     (r"Bilinmeyen model tipi:", "Unknown model type:"),
     (r"Dil değiştirildi:", "Language changed:"),
+    (r"Otomatik Onay:", "Auto-Approved:"),
 ]
 
 def load_lang(config_lang):
