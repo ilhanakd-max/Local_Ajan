@@ -283,16 +283,16 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
     if gpu_mode and profile.num_ctx > 8192:
         profile = profile.model_copy(update={"num_ctx": 8192})
     
-    LOGO = r"""
-    __               ___    _ 
-   / /   ____  _____/   |  (_)
-  / /   / __ \/ ___/ /| | / / 
- / /___/ /_/ / /__/ ___ |/ /  
-/_____/\____/\___/_/  |_/_/   
-                              
-"""
-    console.print(f"[bold cyan]{LOGO}[/bold cyan]")
-    
+    inner_logo = r"""[bold cyan]██╗      ██████╗  ██████╗ █████╗ ██╗
+██║     ██╔═══██╗██╔════╝██╔══██╗██║
+██║     ██║   ██║██║     ███████║██║
+██║     ██║   ██║██║     ██╔══██║██║
+███████╗╚██████╔╝╚██████╗ ██║  ██║██║
+╚══════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝[/bold cyan]
+
+            [bold yellow]L o c a l   A I[/bold yellow]"""
+    console.print(Panel(inner_logo, border_style="bold blue", padding=(1, 4), expand=False))
+
     # Check for updates
     import threading
     def update_checker_thread():
