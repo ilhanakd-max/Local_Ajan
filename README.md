@@ -184,7 +184,7 @@ Instead of encouraging unnecessary refactoring or large rewrites, the mode encou
 
 Enable it with: `/ponytail on`  
 Disable it with: `/ponytail off`
-> 💖 **Special Thanks:** The Ponytail concept is a fantastic approach to minimal coding. If you love this mode as much as we do, please consider visiting and starring the original [Ponytail Repository](https://github.com/your-ponytail-repo-link) to show your support to its creator!
+> 💖 **Special Thanks:** The Ponytail concept is a fantastic approach to minimal coding. If you love this mode as much as we do, please consider visiting and starring the original [Ponytail Repository](https://github.com/dietrichgebert/ponytail) to show your support to its creator!
 
 #### 💾 Sessions
 LocAi supports persistent sessions. You can save a project conversation and continue later without starting from zero.
@@ -477,7 +477,7 @@ Ponytail modu, ajanı daha minimal değişiklikler yapmaya yönlendiren bir çal
 
 Aktifleştirmek: `/ponytail on`  
 Kapatmak: `/ponytail off`
-> 💖 **Özel Teşekkür:** Ponytail (Lazy Senior Dev) konsepti, minimal kodlama felsefesinin harika bir örneğidir. Bu modu bizim kadar sevdiyseniz, lütfen orijinal geliştiricisine destek olmak için [Ponytail Reposuna](https://github.com/your-ponytail-repo-link) giderek yıldız (star) vermeyi unutmayın!
+> 💖 **Özel Teşekkür:** Ponytail (Lazy Senior Dev) konsepti, minimal kodlama felsefesinin harika bir örneğidir. Bu modu bizim kadar sevdiyseniz, lütfen orijinal geliştiricisine destek olmak için [Ponytail Reposuna](https://github.com/dietrichgebert/ponytail) giderek yıldız (star) vermeyi unutmayın!
 
 ### 💾 Oturumlar
 Oturumlar kaydedilebilir: `/session save`, `/session list`, `/session load`  
