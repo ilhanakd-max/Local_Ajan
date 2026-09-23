@@ -148,6 +148,9 @@ def get_user_prompt(prompt_label: str = "Sen") -> str:
     Prompts user for input. Uses prompt_toolkit to natively handle
     multiline pasting without truncation, while providing arrow key history.
     """
+    from lokal_ajan.i18n import translate
+    prompt_label = translate(prompt_label)
+    
     global _prompt_session
     if _prompt_session is None:
         history = FileHistory(os.path.expanduser("~/.lokal_ajan_history"))
@@ -295,8 +298,13 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
     def update_checker_thread():
         new_v = check_for_updates()
         if new_v:
-            console.print(f"\n[bold yellow]🎉 Yeni bir sürüm ({new_v}) mevcut![/bold yellow]")
-            console.print("[yellow]Yüklemek için terminalden çıkıp şunu çalıştırın: [bold white]localajan update[/bold white][/yellow]\n")
+            if ponytail_enabled:
+                console.print(f"\n[bold yellow]🎉 Yeni bir sürüm ({new_v}) mevcut! Ponytail modu aktif olduğu için otomatik güncelleniyor...[/bold yellow]")
+                update_app()
+                console.print("[bold green]✅ Güncelleme tamamlandı. Lütfen değişikliklerin aktif olması için uygulamayı yeniden başlatın.[/bold green]\n")
+            else:
+                console.print(f"\n[bold yellow]🎉 Yeni bir sürüm ({new_v}) mevcut![/bold yellow]")
+                console.print("[yellow]Yüklemek için terminalden çıkıp şunu çalıştırın: [bold white]localajan update[/bold white][/yellow]\n")
             
     t = threading.Thread(target=update_checker_thread)
     t.daemon = True
