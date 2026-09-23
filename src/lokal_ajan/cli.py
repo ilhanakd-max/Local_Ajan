@@ -236,17 +236,17 @@ def show_help():
     table.add_row("exit  veya  quit,  /q", "Uygulamadan çıkar.")
     
     console.print()
-    console.print(Panel(table, title="[bold green]Lokal Ajan Kısayolları ve Fonksiyonları[/bold green]", border_style="cyan"))
+    console.print(Panel(table, title="[bold green]LocAi Kısayolları ve Fonksiyonları[/bold green]", border_style="cyan"))
     
     cli_table = Table(show_header=True, header_style="bold yellow", expand=True)
     cli_table.add_column("Terminal Parametresi", style="bold yellow", width=30)
     cli_table.add_column("İşlev", style="white")
-    cli_table.add_row("localajan", "Normal başlatma (varsa önceki oturumu otomatik devam ettirir)")
-    cli_table.add_row("localajan --new (-n)", "Önceki oturumu yok sayarak sıfırdan başlar")
-    cli_table.add_row("localajan --session <ad>", "Belirli bir oturumu yükler")
-    cli_table.add_row("localajan --model <model>", "Belirli bir model ile başlatır")
-    cli_table.add_row("localajan --gpu-mode (-g)", "Küçük modellerde %100 GPU hızlandırmasını açar (8K Context)")
-    cli_table.add_row("localajan update", "Uygulamayı GitHub'dan en son sürüme günceller")
+    cli_table.add_row("locai", "Normal başlatma (varsa önceki oturumu otomatik devam ettirir)")
+    cli_table.add_row("locai --new (-n)", "Önceki oturumu yok sayarak sıfırdan başlar")
+    cli_table.add_row("locai --session <ad>", "Belirli bir oturumu yükler")
+    cli_table.add_row("locai --model <model>", "Belirli bir model ile başlatır")
+    cli_table.add_row("locai --gpu-mode (-g)", "Küçük modellerde %100 GPU hızlandırmasını açar (8K Context)")
+    cli_table.add_row("locai update", "Uygulamayı GitHub'dan en son sürüme günceller")
     console.print(Panel(cli_table, title="[bold yellow]Terminal Başlatma Parametreleri[/bold yellow]", border_style="yellow"))
     console.print()
 
@@ -284,12 +284,12 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
         profile = profile.model_copy(update={"num_ctx": 8192})
     
     LOGO = r"""
-    __          __          __   ___    _           
-   / /   ____  / /______ _ / /  /   |  (_)___ _____ 
-  / /   / __ \/ //_/ __ `/ /   / /| | / / __ `/ __ \
- / /___/ /_/ / ,< / /_/ / /   / ___ |/ / /_/ / / / /
-/_____/\____/_/|_|\__,_/_/   /_/  |_/ /\__,_/_/ /_/ 
-                                 /___/              
+    __               ___    _ 
+   / /   ____  _____/   |  (_)
+  / /   / __ \/ ___/ /| | / / 
+ / /___/ /_/ / /__/ ___ |/ /  
+/_____/\____/\___/_/  |_/_/   
+                              
 """
     console.print(f"[bold cyan]{LOGO}[/bold cyan]")
     
@@ -304,13 +304,13 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
                 console.print("[bold green]✅ Güncelleme tamamlandı. Lütfen değişikliklerin aktif olması için uygulamayı yeniden başlatın.[/bold green]\n")
             else:
                 console.print(f"\n[bold yellow]🎉 Yeni bir sürüm ({new_v}) mevcut![/bold yellow]")
-                console.print("[yellow]Yüklemek için terminalden çıkıp şunu çalıştırın: [bold white]localajan update[/bold white][/yellow]\n")
+                console.print("[yellow]Yüklemek için terminalden çıkıp şunu çalıştırın: [bold white]locai update[/bold white][/yellow]\n")
             
     t = threading.Thread(target=update_checker_thread)
     t.daemon = True
     t.start()
     
-    console.print(f"[bold blue]Lokal Ajan[/bold blue] başlatılıyor...")
+    console.print(f"[bold blue]LocAi[/bold blue] başlatılıyor...")
     if gpu_mode:
         console.print("[bold yellow]⚡ Hızlı GPU Modu Aktif (8K Context / %100 GPU Hızlandırma)[/bold yellow]")
         
@@ -580,11 +580,11 @@ def list_models():
 @app.command(name="update")
 def update_app():
     """
-    Lokal Ajan'ı en son sürüme günceller.
+    LocAi'ı en son sürüme günceller.
     """
     import sys
     import subprocess
-    console.print("[bold cyan]Lokal Ajan GitHub'dan güncelleniyor...[/bold cyan]")
+    console.print("[bold cyan]LocAi GitHub'dan güncelleniyor...[/bold cyan]")
     try:
         url = "https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip"
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", url])

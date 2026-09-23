@@ -21,7 +21,7 @@ def chat_stream(
     headers = {
         "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": "https://github.com/lokal-ajan/lokal-ajan",
-        "X-Title": "Lokal Ajan",
+        "X-Title": "LocAi",
     }
     
     payload: Dict[str, Any] = {

@@ -37,7 +37,7 @@ def _ensure_gitignore(workdir: str):
             content = gitignore_path.read_text(encoding="utf-8")
             if ".lokal_ajan" not in content:
                 with open(gitignore_path, "a", encoding="utf-8") as f:
-                    f.write("\n# Lokal Ajan oturum verileri\n.lokal_ajan/\n")
+                    f.write("\n# LocAi oturum verileri\n.lokal_ajan/\n")
     except Exception:
         pass
 

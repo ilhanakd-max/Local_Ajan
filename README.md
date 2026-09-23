@@ -1,9 +1,9 @@
 <div align="center">
 
-# Lokal Ajan / Local Agent
+# LocAi / LocAi
 **Terminal Tabanlı Agentic LLM Asistanı | Terminal-based Agentic LLM Assistant**
 
-![Lokal Ajan Ekran Görüntüsü](assets/screenshot.png)
+![LocAi Ekran Görüntüsü](assets/screenshot.png)
 
 [Türkçe](#türkçe-kılavuz) | [English](#english-guide)
 
@@ -13,7 +13,7 @@
 
 <h2 id="türkçe-kılavuz">🇹🇷 Türkçe Kılavuz</h2>
 
-Lokal Ajan, Ollama tabanlı lokal yapay zeka modelleriyle ve bulut sağlayıcılarla (Groq, OpenRouter vb.) çalışan, terminal tabanlı ve **tool-calling (araç kullanma)** yeteneğine sahip bir CLI (Komut Satırı) aracıdır. Özellikle `qwen3:0.6b`, `qwen3:1.7b` gibi çok hafif modellerle bile güvenilir kod yazma ve sistem yönetimi görevlerini yerine getirmesi için optimize edilmiştir.
+LocAi, Ollama tabanlı lokal yapay zeka modelleriyle ve bulut sağlayıcılarla (Groq, OpenRouter vb.) çalışan, terminal tabanlı ve **tool-calling (araç kullanma)** yeteneğine sahip bir CLI (Komut Satırı) aracıdır. Özellikle `qwen3:0.6b`, `qwen3:1.7b` gibi çok hafif modellerle bile güvenilir kod yazma ve sistem yönetimi görevlerini yerine getirmesi için optimize edilmiştir.
 
 ### 🚀 Özellikler ve Yetenekler
 
@@ -26,7 +26,7 @@ Lokal Ajan, Ollama tabanlı lokal yapay zeka modelleriyle ve bulut sağlayıcıl
 
 ### ⚡ Kurulum (Tek Satırla, Antivirüs Dostu)
 
-Lokal Ajan'ı sisteminize küresel bir komut satırı aracı (tıpkı `npm install -g` gibi) olarak kurmak için **pipx** kullanılması önerilir. Bu yöntem hem Windows hem de Linux'ta tamamen güvenlidir ve antivirüs uyarılarını engeller.
+LocAi'ı sisteminize küresel bir komut satırı aracı (tıpkı `npm install -g` gibi) olarak kurmak için **pipx** kullanılması önerilir. Bu yöntem hem Windows hem de Linux'ta tamamen güvenlidir ve antivirüs uyarılarını engeller.
 
 **Adım 1: Pipx'i Kurun (Eğer yüklü değilse)**
 ```bash
@@ -42,7 +42,7 @@ pipx install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.
 
 *(Eğer `pipx` kullanmak istemiyorsanız, doğrudan `pip install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip` yazarak da standart kurulum yapabilirsiniz).*
 
-Kurulum bittikten sonra terminalinizden herhangi bir klasörde sadece `localajan` yazarak uygulamayı başlatabilirsiniz.
+Kurulum bittikten sonra terminalinizden herhangi bir klasörde sadece `locai` yazarak uygulamayı başlatabilirsiniz.
 
 ### 🗑️ Kaldırma (Uninstall)
 Uygulamayı sistemden tamamen silmek için kurulum yönteminize göre şu komutu kullanın:
@@ -58,12 +58,12 @@ pip uninstall lokal-ajan
 
 Etkileşimli (Sohbet) Modu Başlatmak İçin:
 ```bash
-localajan --model qwen3:1.7b --workdir ~/projelerim/foo
+locai --model qwen3:1.7b --workdir ~/projelerim/foo
 ```
 
 Tek Seferlik Görev Vermek İçin (Çalışıp Kapanır):
 ```bash
-localajan run "src/ klasöründeki TODO yorumlarını listele" --model qwen3:1.7b
+locai run "src/ klasöründeki TODO yorumlarını listele" --model qwen3:1.7b
 ```
 
 Terminal içi komutlar:
@@ -77,13 +77,13 @@ Terminal içi komutlar:
 - `ponytail/` (veya `/ponytail [on|off]`): Lazy Senior Dev modunu açıp kapatır.
 - `exit` (veya `quit`, `/q`): Çıkış yapar.
 
-> 💡 **Proje İçi Oturum & Model Hafızası:** Oturum verileri doğrudan proje klasörünüzün içine (`.lokal_ajan/sessions/`) kaydedilir. Terminali kapatsanız bile `localajan` kaldığınız yeri hatırlar. İstediğiniz zaman farklı bir lokal modele geçseniz dahi sohbet ve bağlam korunarak devam eder. Sıfırdan başlamak için `localajan --new` veya terminal içinde `new/` yazmanız yeterlidir.
+> 💡 **Proje İçi Oturum & Model Hafızası:** Oturum verileri doğrudan proje klasörünüzün içine (`.lokal_ajan/sessions/`) kaydedilir. Terminali kapatsanız bile `locai` kaldığınız yeri hatırlar. İstediğiniz zaman farklı bir lokal modele geçseniz dahi sohbet ve bağlam korunarak devam eder. Sıfırdan başlamak için `locai --new` veya terminal içinde `new/` yazmanız yeterlidir.
 
 ---
 
 <h2 id="english-guide">🇬🇧 English Guide</h2>
 
-Local Agent (Lokal Ajan) is a terminal-based agentic CLI tool with powerful **tool-calling** capabilities, built on top of Ollama (for local models) and external providers (Groq, OpenRouter, etc.). It is heavily optimized to produce reliable tool calls even with extremely small models like `qwen3:0.6b` or `qwen3:1.7b`.
+LocAi (LocAi) is a terminal-based agentic CLI tool with powerful **tool-calling** capabilities, built on top of Ollama (for local models) and external providers (Groq, OpenRouter, etc.). It is heavily optimized to produce reliable tool calls even with extremely small models like `qwen3:0.6b` or `qwen3:1.7b`.
 
 ### 🚀 Features & Capabilities
 
@@ -96,7 +96,7 @@ Local Agent (Lokal Ajan) is a terminal-based agentic CLI tool with powerful **to
 
 ### ⚡ Quick Installation (Antivirus Safe)
 
-To install Local Agent globally as a standalone CLI tool (similar to `npm install -g`), we recommend using **pipx**. This method is completely safe on both Windows and Linux, entirely avoiding antivirus flags.
+To install LocAi globally as a standalone CLI tool (similar to `npm install -g`), we recommend using **pipx**. This method is completely safe on both Windows and Linux, entirely avoiding antivirus flags.
 
 **Step 1: Install Pipx (If not already installed)**
 ```bash
@@ -105,14 +105,14 @@ python -m pipx ensurepath
 # WARNING: Close and RESTART your terminal after running this command.
 ```
 
-**Step 2: Install Local Agent**
+**Step 2: Install LocAi**
 ```bash
 pipx install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip
 ```
 
 *(If you don't want to use `pipx`, you can also use standard pip: `pip install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip`)*
 
-After installation, you can launch the app from anywhere by typing `localajan` in your terminal.
+After installation, you can launch the app from anywhere by typing `locai` in your terminal.
 
 ### 🗑️ Uninstallation
 To completely remove the application from your system, use the corresponding command based on your installation method:
@@ -128,12 +128,12 @@ pip uninstall lokal-ajan
 
 Start Interactive Session:
 ```bash
-localajan --model qwen3:1.7b --workdir ~/my_projects/foo
+locai --model qwen3:1.7b --workdir ~/my_projects/foo
 ```
 
 Run a Single Autonomous Task (One-shot):
 ```bash
-localajan run "list all TODO comments in the src/ directory" --model qwen3:1.7b
+locai run "list all TODO comments in the src/ directory" --model qwen3:1.7b
 ```
 
 In-Chat Commands:
@@ -147,7 +147,7 @@ In-Chat Commands:
 - `ponytail/` (or `/ponytail [on|off]`): Toggles the Lazy Senior Dev coding mode.
 - `exit` (or `quit`, `/q`): Quits the application.
 
-> 💡 **In-Project Session & Model Memory:** Sessions are saved directly within your project directory (`.lokal_ajan/sessions/`). Even if you exit the terminal, `localajan` remembers your exact state. You can switch between different local models at any time without losing context. To start fresh, run `localajan --new` or type `new/`.
+> 💡 **In-Project Session & Model Memory:** Sessions are saved directly within your project directory (`.lokal_ajan/sessions/`). Even if you exit the terminal, `locai` remembers your exact state. You can switch between different local models at any time without losing context. To start fresh, run `locai --new` or type `new/`.
 
 ---
 *Built for developers who want private, local, and lightning-fast AI agents right in their terminal.*
