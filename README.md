@@ -9,7 +9,7 @@
 ![LocAi Tool Execution](assets/screenshot_tool.png)
 
 Turn small local LLMs into practical coding agents.
-LocAi is a terminal-based agentic CLI that gives LLMs the ability to read files, modify code, execute commands, inspect projects, use tools and perform multi-step tasks.
+LocAi is a cross-platform (Windows, macOS, Linux) terminal-based agentic CLI that gives LLMs the ability to read files, modify code, execute commands, inspect projects, use tools and perform multi-step tasks.
 Designed with a special focus on small and resource-efficient models such as Qwen3 0.6B / 1.7B / 4B.
 
 [🇹🇷 Türkçe](#türkçe-kılavuz) • [🇬🇧 English](#english-guide)
@@ -409,7 +409,7 @@ See `LICENSE` for license information.
 <h2 id="türkçe-kılavuz">🇹🇷 Türkçe Kılavuz</h2>
 
 ### 🎯 LocAi nedir?
-LocAi, lokal LLM modellerini gerçek bir yazılım ajanına dönüştürmek amacıyla geliştirilmiş terminal tabanlı bir agentic CLI uygulamasıdır.
+LocAi, lokal LLM modellerini gerçek bir yazılım ajanına dönüştürmek amacıyla geliştirilmiş terminal tabanlı ve çapraz platform (Windows, macOS, Linux) destekli bir agentic CLI uygulamasıdır.
 
 Basit bir chatbot gibi yalnızca cevap üretmek yerine modelin:
 - 📁 dosyaları okumasına
