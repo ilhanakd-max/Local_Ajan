@@ -54,28 +54,22 @@ def switch_model(agent: AgentLoop, config):
     new_worker_model = agent.worker_model
     
     if val == "0":
-        console.print("\n[bold magenta]--- Orkestratör Modu Kurulumu ---[/bold magenta]")
-        console.print("[dim]Orkestratör modu, büyük bir 'Beyin' modelinin planlama yapıp küçük bir 'İşçi' modeline kod yazdırmasını sağlar.[/dim]")
-        
-        brain_choice = Prompt.ask(f"1. Beyin modelinin numarasını veya adını seçin (Mevcut: {agent.model_name} - değiştirmemek için boş bırakın)")
-        if brain_choice.strip():
-            b_val = brain_choice.strip()
-            if b_val.isdigit():
-                idx = int(b_val) - 1
-                if 0 <= idx < len(all_models):
-                    new_model = all_models[idx]
-                else:
-                    console.print("[bold red]Geçersiz beyin seçim numarası.[/bold red]")
-                    return
-            else:
-                new_model = b_val
+        if agent.worker_model:
+            # Turn it off instantly
+            new_worker_model = None
+            console.print("\n[bold yellow]Orkestratör modu kapatıldı.[/bold yellow]")
+        else:
+            # Turn it on - only ask for worker model
+            console.print("\n[bold magenta]--- Orkestratör Modu Kurulumu ---[/bold magenta]")
+            console.print(f"[dim]Beyin modeliniz: {agent.model_name}[/dim]")
+            worker_choice = Prompt.ask("İşçi modelinin numarasını veya adını seçin")
+            
+            if not worker_choice.strip():
+                console.print("[dim]İptal edildi.[/dim]")
+                return
                 
-        worker_choice = Prompt.ask("2. İşçi modelinin numarasını veya adını seçin (Kapatmak için '0' veya 'kapat' yazın)")
-        if worker_choice.strip():
-            w_val = worker_choice.strip().lower()
-            if w_val in ("0", "kapat", "off", "false", "none"):
-                new_worker_model = None
-            elif w_val.isdigit():
+            w_val = worker_choice.strip()
+            if w_val.isdigit():
                 idx_w = int(w_val) - 1
                 if 0 <= idx_w < len(all_models):
                     new_worker_model = all_models[idx_w]
