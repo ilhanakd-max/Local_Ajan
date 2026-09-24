@@ -4,6 +4,8 @@
 **Small Models. Real Agents.**  
 *Lightweight Local Coding Agent for Ollama and Other LLM Providers*
 
+🌐 **Official Website:** [locai-cli.netlify.app](https://locai-cli.netlify.app/)
+
 ![LocAi Ekran Görüntüsü](assets/screenshot.png)
 ![LocAi Model Menu](assets/screenshot_menu.png)
 ![LocAi Tool Execution](assets/screenshot_tool.png)
