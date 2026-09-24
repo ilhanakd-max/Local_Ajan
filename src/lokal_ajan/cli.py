@@ -332,7 +332,7 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
     try:
         from lokal_ajan.config import load_state, save_state
         saved = load_state()
-        ponytail_enabled = saved.get("ponytail", False)
+        ponytail_enabled = saved.get("ponytail", True)
         
         state_data = {"workdir": workdir, "model": target_model, "gpu_mode": gpu_mode, "ponytail": ponytail_enabled}
         if worker_model:
@@ -340,7 +340,7 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
             state_data["orchestrator"] = True
         save_state(state_data)
     except Exception:
-        ponytail_enabled = False
+        ponytail_enabled = True
     
     agent = AgentLoop(
         model_name=target_model,
@@ -533,7 +533,7 @@ def run_cmd(
     workdir: str = typer.Option(".", "--workdir", "-w", help="Çalışma dizini"),
     yes: bool = typer.Option(True, "--yes", "-y", help="Tüm araç onaylarını otomatik onayla (non-interactive)"),
     gpu_mode: bool = typer.Option(False, "--gpu-mode", "-g", help="Küçük modeller için context boyutunu 8K'ya çekerek %100 GPU hızlandırmasını aktif et"),
-    ponytail: bool = typer.Option(False, "--ponytail", "-p", help="Ponytail (Lazy Senior Dev) modunu aktif et")
+    ponytail: bool = typer.Option(True, "--ponytail", "-p", help="Ponytail (Lazy Senior Dev) modunu aktif et")
 ):
     """
     Tek seferlik (non-interactive) görev çalıştır.
