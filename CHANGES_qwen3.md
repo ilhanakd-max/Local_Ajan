@@ -140,6 +140,12 @@ Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini enge
 
 - Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
 
+
+
+## 11. v0.3.8 — v0.3.8: Döngü Koruması, Windows PowerShell Base64 & Kararlılık
+
+- Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .

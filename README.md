@@ -14,7 +14,7 @@ Turn small local LLMs into practical coding agents.
 LocAi is a cross-platform (Windows, macOS, Linux) terminal-based agentic CLI that gives LLMs the ability to read files, modify code, execute commands, inspect projects, use tools and perform multi-step tasks.
 Designed with a special focus on small and resource-efficient models such as Qwen3 0.6B / 1.7B / 4B.
 
-📦 **Version:** `0.3.7` • 📝 **Changelog:** [CHANGES_qwen3.md](CHANGES_qwen3.md)
+📦 **Version:** `0.3.8` • 📝 **Changelog:** [CHANGES_qwen3.md](CHANGES_qwen3.md)
 
 [🇹🇷 Türkçe](#türkçe-kılavuz) • [🇬🇧 English](#english-guide)
 
