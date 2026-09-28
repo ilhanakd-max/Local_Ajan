@@ -115,6 +115,25 @@ Bu turda, uygulamanın uzun süreli oturumlarda stabilitesini artırmak ve güve
    * `RunShellTool` için yapılandırılabilir zaman aşımı (`shell_timeout`) eklendi.
    * `load_config()`, `state.json` ile senkronize çalışarak interaktif menüde seçilen modeli hatırlar hale getirildi.
 
+## 9. v0.3.6 — Döngü Koruması, Windows PowerShell Base64 & Kararlılık
+
+Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini engelleyen kritik düzeltmeler ve çoklu platform kararlılık iyileştirmeleri yapıldı:
+
+1. **Özet Kod Döngüsü Koruması (Regurgitation / Loop Prevention):**
+   * Küçük modellerin (Qwen 2B/3.8B vb.) görev tamamlandığında özet veya rapor amaçlı çıktıladığı Markdown kod blokları (` ```html ... ``` `) parser tarafından yanlışlıkla yeni bir `write_file` talebi olarak algılanıyordu.
+   * `_ALREADY_DONE_PATTERN` filtresi genişletilerek `extract_all_tool_calls` ve `extract_tool_call` içine yerleştirildi; tamamlama başlığı/özeti altındaki kod blokları araç çağrısı olarak yorumlanmaz.
+   * Döngü içi araç geri bildirimi ve sistem prompt kuralları (Minimal, Standart, Ponytail) güncellenerek modelin görev tamamlandığında kod dökmesi yasaklandı; yalnızca 1 kısa doğrulama cümlesi söyleyip durması sağlandı.
+
+2. **Windows PowerShell Güvenliği (`-EncodedCommand`):**
+   * Windows ortamında PowerShell komutları `UTF-16LE` Base64 kodlaması ile `-EncodedCommand` üzerinden çalıştırılmaya başlandı. Çok satırlı ifadeler, boru hatları (`|`), tırnaklar ve özel karakterler Windows'ta kabuk bozulması olmadan güvenle yürütülür.
+
+3. **Uzun Oturum Bellek Uyarısı:**
+   * Oturum geçmişi 40 mesajı aştığında bellek şişmesini ve token aşımını önlemek amacıyla tek seferlik kullanıcı bilgilendirme ipucu eklendi.
+
+4. **Kod Temizliği & Testler:**
+   * Kullanılmayan `_repeat_count` ölü kodu temizlendi.
+   * Test dosya isimlendirmesi güncellendi (`test_groq_profiles.py`) ve Markdown tamamlama özetini doğrulayan birim test eklendi.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .
@@ -122,3 +141,4 @@ pytest tests/ -v
 ollama pull qwen3:0.6b
 lokal-ajan --model qwen3:0.6b --workdir /tmp/deneme
 ```
+

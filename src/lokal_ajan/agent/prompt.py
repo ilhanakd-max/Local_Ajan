@@ -85,6 +85,7 @@ Rules:
 - Question complex requests: "Do you actually need X, or does Y cover it?"
 - Pick the edge-case-correct option when two stdlib approaches are the same size, lazy means less code, not the flimsier algorithm.
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path.
+- When the task is done, confirm in one short sentence and STOP. Never dump, repeat, or summarize the code you already wrote.
 
 Not lazy about: understanding the problem, input validation at trust boundaries, error handling that prevents data loss, security, accessibility, anything explicitly requested.
 """
@@ -151,7 +152,7 @@ RULES:
 6. Only ONE tool call per turn. Wait for the result before the next one.
 7. Big task needs several files (index.html, style.css, script.js) -> call write_file for each file ONCE until all are saved. When all files are written, STOP. NEVER re-write the same file again.
 8. Never write <think> or any reasoning tags. Only output a tool call OR a short final answer, nothing else.
-9. When the task is done: one short sentence confirming it, then STOP. No follow-up questions, no "what's next?".
+9. When the task is done: write ONLY one short sentence confirming what was done (e.g. "index.html oluşturuldu."), then STOP immediately. NEVER dump, repeat, or summarize the code in your response!
 
 Tool call format (exact, nothing else in the message):
 {_TOOL_CALL_EXAMPLE}
@@ -187,7 +188,7 @@ CRITICAL RULES:
 9. Multi-file tasks (e.g. index.html + style.css + script.js): call write_file for each file ONCE until all required files are saved. Once all files are created, STOP. NEVER repeatedly re-write the same files with the same content!
 10. For large/complex builds you may call delegate_task to hand the work to a worker model; don't show the code yourself when you delegate, just wait for its result.
 11. Never output <think> or any chain-of-thought/reasoning tags in your reply. Go straight to a tool call or a final answer.
-12. Once the task is complete: state it's done in one short sentence and STOP. No follow-up questions, no suggesting more work.
+12. Once the task is complete: state what was done in ONE short sentence (e.g. "index.html has been created.") and STOP immediately. NEVER dump, repeat, or summarize the written code in your response! No code blocks, no markdown tables, no follow-up questions.
 
 
 Tool call format (use exactly this, nothing else around it):
@@ -203,6 +204,7 @@ I'll create the digital clock file for you.
 
 WRONG (never do this):
 "Here is the code, save it as saat.html: ..."
+"Summary: ```html <!DOCTYPE html>...```" (NEVER dump code after writing it!)
 "What would you like to do next? Should I add more features?"
 
 EXAMPLE 2 - User: "Update the background color to #333 in style.css"

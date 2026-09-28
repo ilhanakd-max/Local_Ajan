@@ -152,6 +152,30 @@ print("I have created the necessary files: index.html (for structure), style.css
     print("✓ test_user_log_exact_raw_unescaped_quotes passed")
 
 
+def test_completion_summary_not_extracted_as_tool_call():
+    """A completion report with markdown code block should NOT trigger a fallback write_file."""
+    text = """#/ Görev Tamamlandı ✅
+
+## Yapılan İşlemler
+
+| Adım | Durum | Açıklama |
+|------|-------|----------|
+| `index.html` oluşturuldu | ✅ | Dosya başarıyla yazıldı |
+
+### Özet:
+
+```html
+<!DOCTYPE html>
+<html>
+<head><title>Analog Saat</title></head>
+<body><h1>Clock</h1></body>
+</html>
+```
+"""
+    calls = extract_all_tool_calls(text)
+    assert len(calls) == 0, f"Expected 0 calls from completion summary, got: {calls}"
+
+
 if __name__ == "__main__":
     test_normalize_broken_tags()
     test_cleanup_json_trailing_gt()
@@ -162,4 +186,5 @@ if __name__ == "__main__":
     test_extract_all_broken_tags_multiple()
     test_extract_all_single_call_fallback()
     test_user_log_exact_raw_unescaped_quotes()
+    test_completion_summary_not_extracted_as_tool_call()
     print("\n🎉 Tüm testler başarılı!")

@@ -36,7 +36,6 @@ class AgentLoop:
         self.session_name = session_name
         self._last_call_key = None
         self._last_call_success = False
-        self._repeat_count = 0
 
 
         
@@ -347,6 +346,11 @@ class AgentLoop:
         self._last_call_key = None
         self._last_call_success = False
         step_executed_calls: dict = {}
+
+        # Long session memory warning (Madde 1)
+        if len(self.history.messages) > 40 and not getattr(self, "_history_warned", False):
+            console.print("[dim]💡 İpucu: Oturum geçmişi uzadı. Belleği tazelemek için '/session save' ardından '/new' yapabilirsiniz.[/dim]")
+            self._history_warned = True
         
         step_count = 0
         max_steps = self.config.max_steps
@@ -717,7 +721,7 @@ class AgentLoop:
                         "user",
                         f"Araç(lar) çalıştırıldı ve şu sonuçları döndürdü:\n"
                         f"<tool_output>\n{combined}\n</tool_output>\n"
-                        f"(Şimdi yukarıdaki sonuçlara göre görevi tamamla: kalan dosyalar varsa write_file çağır veya cevabını tamamla.)"
+                        f"(Kalan başka dosya/işlem yoksa görevi bitir. KESİNLİKLE KODUN ÖZETİNİ VEYA İÇERİĞİNİ YAZMA! Yalnızca 1 kısa cümleyle ne yapıldığını söyle ve dur. / If done, do NOT dump or repeat the code, reply with 1 short confirmation sentence and STOP.)"
                     )
 
                 if batch_aborted:

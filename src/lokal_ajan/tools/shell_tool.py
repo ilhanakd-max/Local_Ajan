@@ -47,11 +47,14 @@ class RunShellTool(BaseTool):
                 )
 
             if platform.system() == "Windows":
-                # On Windows, run via PowerShell so that commands like 'curl', 'cat', 'ls', 'rm',
-                # and multiline expressions work without CMD syntax errors.
+                # On Windows, run via PowerShell with Base64 -EncodedCommand.
+                # Encoding as UTF-16LE Base64 prevents multiline parsing issues,
+                # quotes, special symbols, and pipe/redirection collisions.
                 try:
+                    import base64
+                    encoded_cmd = base64.b64encode(cleaned_cmd.encode("utf-16le")).decode("ascii")
                     result = subprocess.run(
-                        ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", cleaned_cmd],
+                        ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded_cmd],
                         cwd=self.workdir,
                         text=True,
                         capture_output=True,

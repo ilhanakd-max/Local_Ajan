@@ -44,6 +44,18 @@ def _build_valid_names(extra_valid_names: Optional[Set[str]] = None) -> Set[str]
     return valid
 
 
+_ALREADY_DONE_PATTERN = (
+    r"(?:has been|was)\s+(?:successfully\s+)?(?:created|saved|written|completed)|"
+    r"successfully\s+(?:created|saved|written|completed)|"
+    r"başa?r[ıi]yla\s+(?:olu[şs]turuldu|kaydedildi|yaz[ıi]ld[ıi]|tamamland[ıi])|"
+    r"dosya\s+başa?r[ıi]yla\s+yaz[ıi]ld[ıi]|"
+    r"görev\s+(?:başarıyla\s+)?tamamland[ıi]|"
+    r"task\s+(?:successfully\s+)?completed|"
+    r"yap[ıi]lan\s+i[şs]lemler|"
+    r"here(?:'s|\s+is)\s+the\s+content"
+)
+
+
 def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -> Optional[Tuple[str, Dict[str, Any]]]:
     """
     Extracts a tool call from the model's text output.
@@ -147,8 +159,7 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
     # Saves the code blocks to files instead of just displaying them.
     if "write_file" in valid_tool_names:
         # Ignore if the model is just summarizing an already created file
-        already_done_pattern = r"(?:has been|was)\s+(?:successfully\s+)?(?:created|saved|written)|successfully\s+(?:created|saved|written)|başa?r[ıi]yla\s+(?:olu[şs]turuldu|kaydedildi)|here's the content|here is the content"
-        if not re.search(already_done_pattern, text, re.IGNORECASE):
+        if not re.search(_ALREADY_DONE_PATTERN, text, re.IGNORECASE):
             pairs = _extract_code_files_with_names(text)
             if pairs:
                 if len(pairs) == 1:
@@ -208,7 +219,9 @@ def extract_all_tool_calls(text: str, extra_valid_names: Optional[Set[str]] = No
     # 2. Check for code-block file fallback (_write_multiple / write_file)
     # Even if some tool calls were found, any additional code blocks with file names
     # not already captured in results should be included.
-    if "write_file" in valid_tool_names:
+    # CRITICAL: Skip fallback if the model is just outputting a completion summary/table
+    # of work already done, to prevent endless write-summary-write loops.
+    if "write_file" in valid_tool_names and not re.search(_ALREADY_DONE_PATTERN, text, re.IGNORECASE):
         already_written_paths = {
             args.get("path") for name, args in results if name == "write_file" and "path" in args
         }
