@@ -88,6 +88,33 @@ olacağından bilinçli olarak tercih edilmedi.)
 - `tests/test_qwen3_optimizations.py`: yukarıdaki tüm davranışlar için 20
   yeni birim testi (toplam 34 test, hepsi geçiyor).
 
+## 8. v0.3.5 — Dayanıklılık, Güvenlik ve Mimari İyileştirmeleri
+
+Bu turda, uygulamanın uzun süreli oturumlarda stabilitesini artırmak ve güvenlik katmanını sıkılaştırmak için aşağıdaki geliştirmeler yapıldı:
+
+1. **Derinlemesine Savunma (Defense-in-Depth Sandbox):**
+   * Dosya ve Git araçlarının (`read_file`, `write_file`, `edit_file`, `list_dir`, `glob`, `grep`, `git_status`, `git_diff`) içine doğrudan `workdir` ve `get_safe_path` entegrasyonu sağlandı.
+   * Araçlar doğrudan çağrılsalar bile çalışma alanı dışındaki dosyalara erişim kökten engellendi.
+
+2. **Bulut API Dayanıklılığı (Retry & Exponential Backoff):**
+   * Tüm bulut sağlayıcı istemcilerine (Groq, OpenRouter, NineRouter, Nvidia) bağlantı kopmalarına (`ConnectError`) ve sunucu/hız sınırı hatalarına (`429 Too Many Requests`, `500`, `502`, `503`, `504`) karşı 3 aşamalı üstel bekleme (`time.sleep(2 ** attempt)`) mekanizması eklendi.
+   * `max_tokens` için sabit 4096 sınırı kaldırılarak modelin gerçek `num_ctx` değeri iletildi.
+
+3. **Bellek Güvenliği ve Hafıza Budama (ChatHistory Pruning):**
+   * `ChatHistory` sınıfına sınır (`max_size=500`) ve otomatik kaydırmalı budama mantığı eklendi.
+   * Oturum çok uzun sürse dahi en baştaki kritik `system_prompt` daima korunur; eskiyen mesajlar sırayla tahliye edilerek RAM sızıntısı önlendi.
+
+4. **Parser ve XML Yanlış Pozitif Koruması:**
+   * XML/HTML biçimli araç ayrıştırıcı fonksiyonu (`_try_parse_xml_tool_call`), geçerli araç listesi (`valid_names`) ile sıkılaştırıldı; modelin ürettiği standart HTML etiketlerinin yanlışlıkla araç sanılması engellendi.
+   * `extract_all_tool_calls` içindeki kapalı ve açık etiket ayrıştırma mantığı birleştirilerek kod tekrarı giderildi ve Markdown kod bloğu çıktısı veren modellerle uyumluluğu artırıldı.
+
+5. **Döngü ve Araç Mantığı İyileştirmeleri:**
+   * `_write_multiple` sonrasında döngünün erkenden sonlandırılması engellendi; modelin dosya yazdıktan sonra test çalıştırma veya özetleme yapabilmesi sağlandı.
+   * Çakışan tekrar ve döngü kontrolleri tek bir akıllı `step_executed_calls` mekanizmasında sadeleştirildi.
+   * İşçi model özet notu (`_worker_note`) üst limiti 2000'den 8000 karaktere çıkarıldı.
+   * `RunShellTool` için yapılandırılabilir zaman aşımı (`shell_timeout`) eklendi.
+   * `load_config()`, `state.json` ile senkronize çalışarak interaktif menüde seçilen modeli hatırlar hale getirildi.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .

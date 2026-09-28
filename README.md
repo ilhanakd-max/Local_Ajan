@@ -163,18 +163,18 @@ The idea is to use:
 
 This can be useful when running different models for different parts of a workflow.
 
-#### 🔒 Secure Workspace / Sandbox
-Giving an LLM access to a terminal is powerful. It also requires safeguards. LocAi therefore restricts file and shell operations to the configured working directory.
+#### 🔒 Secure Workspace / Sandbox (Defense-in-Depth)
+Giving an LLM access to a terminal is powerful. It also requires safeguards. LocAi therefore restricts file and shell operations to the configured working directory with multi-layered defense:
 
 The agent is designed around:
-- Workspace-bound file operations
-- Path normalization
-- Path traversal protection
-- Dangerous command detection
-- Confirmation for destructive operations
-- Configurable working directory
+- **Defense-in-Depth Sandbox:** Sandbox path verification (`get_safe_path`) is enforced both at the top-level Agent Loop and directly inside every individual filesystem and git tool class.
+- Workspace-bound file operations with path traversal protection (`../../etc/passwd` blocked)
+- Path normalization and directory scoping
+- Dangerous command detection (blocking interactive pagers/editors like `nano`, `vim`, `less`)
+- Confirmation prompts for destructive operations
+- Configurable shell execution timeout (`shell_timeout`)
 
-Examples of potentially dangerous commands can trigger additional confirmation instead of being executed blindly. The goal is to give the agent useful access to your project without giving it unrestricted access to your entire system.
+Examples of potentially dangerous commands trigger additional confirmation instead of being executed blindly. The goal is to give the agent useful access to your project without giving it unrestricted access to your entire system.
 
 #### 🐴 Ponytail Mode
 LocAi includes an optional Ponytail mode. The idea is simple: **Do the smallest practical change that solves the problem.**
@@ -190,20 +190,18 @@ Enable it with: `/ponytail on`
 Disable it with: `/ponytail off`
 > 💖 **Special Thanks:** The Ponytail concept is a fantastic approach to minimal coding. If you love this mode as much as we do, please consider visiting and starring the original [Ponytail Repository](https://github.com/dietrichgebert/ponytail) to show your support to its creator!
 
-#### 💾 Sessions
-LocAi supports persistent sessions. You can save a project conversation and continue later without starting from zero.
-`/session save`, `/session list`, `/session load`
+#### 💾 Sessions & Memory Management
+LocAi supports persistent sessions and long-running context safety:
+- **Session Persistence:** Save project conversations and resume anytime (`/session save`, `/session list`, `/session load`).
+- **Seamless Model Switching:** Switch models on the fly while preserving chat history and adapting system prompts to the new model's profile.
+- **State & Config Synchronization:** Remembers your chosen model and synchronizes seamlessly between `state.json` and `config.toml`.
+- **Sliding History Pruning:** Automatically bounds in-memory message history to prevent RAM leaks during extended coding marathons, while strictly protecting the initial system prompt.
 
-You can also switch models while preserving the conversation history. This makes it possible to start with a lightweight model and continue with another model when a task becomes more complex.
-
-#### 🌐 Multiple LLM Providers
-LocAi is primarily designed around local models, but it can also work with external providers. Supported integrations include:
-- Ollama
-- OpenRouter
-- Groq
-- NineRouter
-
-This means the same agent workflow can be used with different model backends.
+#### 🌐 Multiple LLM Providers & API Resilience
+LocAi is primarily designed around local models, but it seamlessly supports cloud providers with enterprise-grade resilience:
+- **Supported Providers:** Ollama, OpenRouter, Groq, NineRouter, NVIDIA Cloud.
+- **Automatic Retry & Exponential Backoff:** 3-stage backoff resilience against temporary network drops, server errors (HTTP 5xx), and rate limits (HTTP 429).
+- **Full Context Window Forwarding:** Dynamically forwards the model's actual context window (`num_ctx`) rather than artificially capping responses.
 
 ### ⚡ Quick Start
 
@@ -451,15 +449,16 @@ LocAi'nin temel araçları:
 `read_file`, `write_file`, `edit_file`, `list_dir`, `glob`, `grep`, `run_shell`, `git_status`, `git_diff`  
 Bu araçlar sayesinde ajan gerçek proje dosyaları üzerinde çalışabilir.
 
-### 🔒 Güvenlik
-LLM'ye terminal erişimi vermek güçlü bir özellik olduğu kadar dikkat gerektirir. LocAi bu nedenle çalışma alanını `workdir` ile sınırlandırır.
+### 🔒 Güvenlik & Derinlemesine Savunma (Defense-in-Depth)
+LLM'ye terminal erişimi vermek güçlü bir özellik olduğu kadar üst düzey güvenlik gerektirir. LocAi bu nedenle çalışma alanını çok katmanlı olarak sınırlandırır:
 
 Temel güvenlik mekanizmaları:
-- çalışma klasörü sınırı
-- path traversal koruması
-- tehlikeli komut algılama
-- yıkıcı işlemler için onay
-- sandbox yaklaşımı
+- **Derinlemesine Savunma (Defense-in-Depth):** Sandbox doğrulaması hem ana Ajan Döngüsünde hem de her bir dosya ve Git aracı içinde bağımsız olarak denetlenir.
+- **Path Traversal Koruması:** `../../etc/passwd` gibi dizin dışına taşma girişimleri kökten engellenir.
+- **Güvenli Kabuk (Shell) Yürütme:** `nano`, `vim`, `less` gibi etkileşimli editörlerin terminali kilitlemesi engellenir; zaman aşımı (`shell_timeout`) yapılandırılabilir.
+- **Yıkıcı İşlemler İçin Onay:** Dosya yazma, değiştirme ve kabuk komutları çalıştırma öncesinde kullanıcı onayı istenir.
+- **Bulut API Dayanıklılığı:** Groq, OpenRouter, NineRouter ve Nvidia sağlayıcılarında ağ kopmaları ve 429/5xx hatalarına karşı 3 aşamalı üstel bekleme (exponential backoff) devrededir.
+- **Hafıza Budama:** Uzun oturumlarda bellek sızıntısını önlemek için sistem talimatı korunarak mesaj geçmişi otomatik sınırlandırılır.
 
 ### 🤖 Orkestratör / İşçi
 LocAi iki farklı modeli birlikte kullanabilir.
