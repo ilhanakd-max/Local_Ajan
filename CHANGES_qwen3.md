@@ -134,6 +134,12 @@ Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini enge
    * Kullanılmayan `_repeat_count` ölü kodu temizlendi.
    * Test dosya isimlendirmesi güncellendi (`test_groq_profiles.py`) ve Markdown tamamlama özetini doğrulayan birim test eklendi.
 
+
+
+## 10. v0.3.7 — v0.3.7: Döngü Koruması, Windows PowerShell Base64 & Kararlılık
+
+- Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .
