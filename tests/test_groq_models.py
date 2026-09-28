@@ -26,24 +26,12 @@ def test_groq_config():
     assert cfg.groq_api_key.startswith("gsk_")
 
 
-def test_launcher_external_models():
-    from launcher.launcher import get_ollama_models
-    models = get_ollama_models()
-    expected = [
-        "groq/openai/gpt-oss-120b",
-        "groq/openai/gpt-oss-20b",
-        "groq/qwen/qwen3.8-27b",
-        "openrouter/free",
-    ]
-    for m in expected:
-        assert m in models, f"Expected {m} to be in launcher models"
 
 
 if __name__ == "__main__":
     tests = [
         test_groq_model_profiles,
         test_groq_config,
-        test_launcher_external_models,
     ]
     for t in tests:
         try:

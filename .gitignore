@@ -4,3 +4,9 @@ __pycache__/
 .env
 graphify-out/
 .DS_Store
+
+# Lokal Ajan oturum verileri
+.lokal_ajan/
+.tmp_scratch/
+*_backup*/
+*_backup.py

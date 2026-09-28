@@ -16,10 +16,13 @@ class TestSession(unittest.TestCase):
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.workdir = self.tmp_dir.name
         self.sessions_path = Path(self.tmp_dir.name) / "sessions"
-        session_module.SESSIONS_DIR = self.sessions_path
+        os.environ["LOKAL_AJAN_SESSIONS"] = str(self.sessions_path)
 
     def tearDown(self):
+        import os
         self.tmp_dir.cleanup()
+        if "LOKAL_AJAN_SESSIONS" in os.environ:
+            del os.environ["LOKAL_AJAN_SESSIONS"]
 
     def test_save_and_load_session(self):
         messages = [
@@ -58,6 +61,10 @@ class TestSession(unittest.TestCase):
         self.assertIn("s2", names_after)
 
     def test_project_folder_and_auto_naming(self):
+        import os
+        if "LOKAL_AJAN_SESSIONS" in os.environ:
+            del os.environ["LOKAL_AJAN_SESSIONS"]
+            
         from lokal_ajan.agent.session import generate_session_name
         auto_name = generate_session_name()
         self.assertTrue(auto_name.startswith("oturum_"))

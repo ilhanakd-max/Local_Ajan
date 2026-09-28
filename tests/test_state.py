@@ -36,6 +36,18 @@ class TestStatePersistence(unittest.TestCase):
         self.assertEqual(state.get("workdir"), "/tmp")
         self.assertEqual(state.get("model"), "openrouter/free")
 
+    def test_load_config_syncs_with_state(self):
+        from lokal_ajan.config import load_config
+        save_state({"model": "custom-state-model:latest"}, self.state_file)
+        import lokal_ajan.config as config_module
+        old_state_path = config_module.STATE_PATH
+        config_module.STATE_PATH = self.state_file
+        try:
+            cfg = load_config(Path(self.tmp_dir.name) / "nonexistent.toml")
+            self.assertEqual(cfg.default_model, "custom-state-model:latest")
+        finally:
+            config_module.STATE_PATH = old_state_path
+
 
 if __name__ == "__main__":
     unittest.main()

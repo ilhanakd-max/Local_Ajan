@@ -4,6 +4,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from .base import BaseTool
 from .registry import registry
+from lokal_ajan.safety.sandbox import get_safe_path
 
 class ReadFileArgs(BaseModel):
     path: str = Field(..., description="Path to the file to read")
@@ -16,8 +17,13 @@ class ReadFileTool(BaseTool):
     args_schema = ReadFileArgs
     requires_confirm = False
     
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+    
     def run(self, path: str, start_line: int | None = None, end_line: int | None = None) -> str:
         try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
             with open(path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
@@ -32,6 +38,8 @@ class ReadFileTool(BaseTool):
             if not result:
                 return f"File '{path}' is empty."
             return result
+        except ValueError as e:
+            return f"Error: {e}"
         except Exception as e:
             return f"Error reading file: {e}"
 
@@ -45,12 +53,19 @@ class WriteFileTool(BaseTool):
     args_schema = WriteFileArgs
     requires_confirm = True
     
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+    
     def run(self, path: str, content: str) -> str:
         try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
             os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(content)
             return f"Successfully wrote to {path}"
+        except ValueError as e:
+            return f"Error: {e}"
         except Exception as e:
             return f"Error writing file: {e}"
 
@@ -65,8 +80,13 @@ class EditFileTool(BaseTool):
     args_schema = EditFileArgs
     requires_confirm = True
     
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+    
     def run(self, path: str, old_str: str, new_str: str) -> str:
         try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
             with open(path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
@@ -100,6 +120,8 @@ class EditFileTool(BaseTool):
                     return f"Successfully edited {path}"
                 
             return f"Error: Could not find target string in {path}"
+        except ValueError as e:
+            return f"Error: {e}"
         except Exception as e:
             return f"Error editing file: {e}"
 
@@ -113,12 +135,19 @@ class ListDirTool(BaseTool):
     args_schema = ListDirArgs
     requires_confirm = False
     
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+    
     def run(self, path: str) -> str:
         try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
             items = os.listdir(path)
             if not items:
                 return f"Directory '{path}' is empty."
             return "\n".join(items)
+        except ValueError as e:
+            return f"Error: {e}"
         except Exception as e:
             return f"Error listing directory: {e}"
 
@@ -132,8 +161,13 @@ class GlobTool(BaseTool):
     args_schema = GlobArgs
     requires_confirm = False
 
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+
     def run(self, pattern: str, path: str = ".") -> str:
         try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
             base = Path(path)
             if not base.exists():
                 return f"Error: Path '{path}' does not exist."
@@ -156,6 +190,8 @@ class GlobTool(BaseTool):
             if len(matches) >= 100:
                 out += "\n... (ilk 100 sonuç gösterildi)"
             return out
+        except ValueError as e:
+            return f"Error: {e}"
         except Exception as e:
             return f"Error running glob: {e}"
 
@@ -170,12 +206,17 @@ class GrepTool(BaseTool):
     args_schema = GrepArgs
     requires_confirm = False
 
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+
     def run(self, pattern: str, path: str = ".", case_sensitive: bool = False) -> str:
         import shutil
         import subprocess
         import re
 
         try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
             target_path = Path(path)
             if not target_path.exists():
                 return f"Error: Path '{path}' does not exist."
@@ -227,6 +268,8 @@ class GrepTool(BaseTool):
             if len(results) >= 100:
                 out += "\n... (ilk 100 sonuç gösterildi)"
             return out
+        except ValueError as e:
+            return f"Error: {e}"
         except Exception as e:
             return f"Error searching with grep: {e}"
 

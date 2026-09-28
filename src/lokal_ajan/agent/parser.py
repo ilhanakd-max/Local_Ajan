@@ -86,7 +86,7 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
     lfm_match = re.search(r"<\|tool_call_start\|>(.*?)<\|tool_call_end\|>", text, re.DOTALL)
     if lfm_match:
         inner = lfm_match.group(1).strip()
-        result = _try_parse_tool_json(inner) or _try_parse_function_call(inner) or _try_parse_xml_tool_call(inner)
+        result = _try_parse_tool_json(inner) or _try_parse_function_call(inner) or _try_parse_xml_tool_call(inner, valid_tool_names)
         if result and result[0] in valid_tool_names:
             return result
 
@@ -98,7 +98,7 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
         tag_match = re.search(r"<tool_call>(.*)", text, re.DOTALL)
     if tag_match:
         inner = tag_match.group(1).strip()
-        result = _try_parse_tool_json(inner) or _try_parse_function_call(inner) or _try_parse_xml_tool_call(inner)
+        result = _try_parse_tool_json(inner) or _try_parse_function_call(inner) or _try_parse_xml_tool_call(inner, valid_tool_names)
         # If direct parse failed, try extracting balanced JSON from the inner text
         if not result:
             balanced = _extract_balanced_json(inner)
@@ -109,8 +109,8 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
 
     # Strategy 2.5: XML-based tool calls (Nemotron, Hermes, Mistral, Qwen XML tags)
     # e.g. <function=delegate_task><parameter=task>...</parameter></function>
-    xml_result = _try_parse_xml_tool_call(text)
-    if xml_result and (not valid_tool_names or xml_result[0] in valid_tool_names):
+    xml_result = _try_parse_xml_tool_call(text, valid_tool_names)
+    if xml_result and xml_result[0] in valid_tool_names:
         return xml_result
 
     # Strategy 3: Markdown code block (```json ... ```)
@@ -131,14 +131,14 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
     fn_candidates = re.findall(r"\[?\b[a-zA-Z_][a-zA-Z0-9_]*\s*\([\s\S]*?\)\s*\]?", text_no_codeblocks)
     for cand in fn_candidates:
         result = _try_parse_function_call(cand)
-        if result and (not valid_tool_names or result[0] in valid_tool_names):
+        if result and result[0] in valid_tool_names:
             return result
 
     # Strategy 5: Find any balanced { ... } that looks like a tool call
     json_str = _extract_balanced_json(text)
     if json_str:
         result = _try_parse_tool_json(json_str)
-        if result and (not valid_tool_names or result[0] in valid_tool_names):
+        if result and result[0] in valid_tool_names:
             return result
 
     # Strategy 6: Fallback for weak/conversational models that output code blocks
@@ -186,40 +186,45 @@ def extract_all_tool_calls(text: str, extra_valid_names: Optional[Set[str]] = No
 
     results: List[Tuple[str, Dict[str, Any]]] = []
 
-    # Find all <tool_call>...</tool_call> blocks
-    tag_blocks = list(re.finditer(r"<tool_call>(.*?)</tool_call>", text, re.DOTALL))
-
-    if tag_blocks:
-        for m in tag_blocks:
-            inner = m.group(1).strip()
-            result = _try_parse_tool_json(inner) or _try_parse_function_call(inner) or _try_parse_xml_tool_call(inner)
+    # 1. Parse all <tool_call> segments (handles both closed and unclosed in one pass)
+    if "<tool_call>" in text:
+        segments = text.split("<tool_call>")[1:]
+        for seg in segments:
+            # Strip closing tag and trailing content if present
+            if "</tool_call>" in seg:
+                inner = seg.split("</tool_call>")[0].strip()
+            else:
+                inner = seg.strip()
+            if not inner:
+                continue
+            result = _try_parse_tool_json(inner) or _try_parse_function_call(inner) or _try_parse_xml_tool_call(inner, valid_tool_names)
             if not result:
                 balanced = _extract_balanced_json(inner)
                 if balanced:
                     result = _try_parse_tool_json(balanced)
             if result and result[0] in valid_tool_names:
                 results.append(result)
-        if results:
-            return results
 
-    # Also check for unclosed <tool_call> blocks (model stops mid-tag)
-    # Split on <tool_call> and try to parse each segment
-    if "<tool_call>" in text:
-        segments = text.split("<tool_call>")[1:]  # skip text before first tag
-        for seg in segments:
-            # Strip closing tag if present
-            seg = re.sub(r"</tool_call>.*", "", seg, count=1, flags=re.DOTALL).strip()
-            result = _try_parse_tool_json(seg) or _try_parse_function_call(seg) or _try_parse_xml_tool_call(seg)
-            if not result:
-                balanced = _extract_balanced_json(seg)
-                if balanced:
-                    result = _try_parse_tool_json(balanced)
-            if result and result[0] in valid_tool_names:
-                results.append(result)
-        if results:
-            return results
+    # 2. Check for code-block file fallback (_write_multiple / write_file)
+    # Even if some tool calls were found, any additional code blocks with file names
+    # not already captured in results should be included.
+    if "write_file" in valid_tool_names:
+        already_written_paths = {
+            args.get("path") for name, args in results if name == "write_file" and "path" in args
+        }
+        code_files = _extract_code_files_with_names(text)
+        new_files = [pair for pair in code_files if pair[0] not in already_written_paths]
+        if new_files:
+            if not results and len(new_files) > 1:
+                results.append(("_write_multiple", {"files": new_files}))
+            else:
+                for path, content in new_files:
+                    results.append(("write_file", {"path": path, "content": content}))
 
-    # Fallback: delegate to single-call extractor
+    if results:
+        return results
+
+    # 3. Fallback: delegate to single-call extractor
     single = extract_tool_call(text, extra_valid_names)
     if single:
         return [single]
@@ -433,7 +438,7 @@ def _cleanup_json(json_str: str) -> str:
         json_str = json_str[:last_brace + 1]
     return json_str
 
-def _try_parse_xml_tool_call(text: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+def _try_parse_xml_tool_call(text: str, valid_names: Optional[Set[str]] = None) -> Optional[Tuple[str, Dict[str, Any]]]:
     """
     Parse XML-style tool calls used by Nemotron, Hermes, Mistral, and Qwen models.
     Supports formats:
@@ -454,47 +459,49 @@ def _try_parse_xml_tool_call(text: str) -> Optional[Tuple[str, Dict[str, Any]]]:
     m = func_pattern.search(text)
     if m:
         func_name = m.group(1).strip()
-        body = m.group(2)
-        
-        param_pattern = re.compile(
-            r'<parameter(?:=|\s+name=|\s+)[\"\'\']?([a-zA-Z0-9_]+)[\"\'\']?>(.*?)(?:</parameter>|$)',
-            re.DOTALL | re.IGNORECASE
-        )
-        params = param_pattern.findall(body)
-        if params:
-            args = {pname.strip(): pval.strip() for pname, pval in params}
-            return func_name, args
-        else:
-            tag_params = re.findall(r'<([a-zA-Z0-9_]+)>(.*?)</\1>', body, re.DOTALL)
-            if tag_params:
-                args = {pname.strip(): pval.strip() for pname, pval in tag_params if pname.lower() not in ('function', 'parameter', 'tool_call')}
-                if args:
-                    return func_name, args
+        if not valid_names or func_name in valid_names:
+            body = m.group(2)
+            param_pattern = re.compile(
+                r'<parameter(?:=|\s+name=|\s+)[\"\'\']?([a-zA-Z0-9_]+)[\"\'\']?>(.*?)(?:</parameter>|$)',
+                re.DOTALL | re.IGNORECASE
+            )
+            params = param_pattern.findall(body)
+            if params:
+                args = {pname.strip(): pval.strip() for pname, pval in params}
+                return func_name, args
+            else:
+                tag_params = re.findall(r'<([a-zA-Z0-9_]+)>(.*?)</\1>', body, re.DOTALL)
+                if tag_params:
+                    args = {pname.strip(): pval.strip() for pname, pval in tag_params if pname.lower() not in ('function', 'parameter', 'tool_call')}
+                    if args:
+                        return func_name, args
 
     # Format 4: <tool_call><name>name</name><arguments>...</arguments></tool_call>
     name_pattern = re.compile(r'<(?:tool_name|name)>([a-zA-Z0-9_]+)</(?:tool_name|name)>', re.IGNORECASE)
     nm = name_pattern.search(text)
     if nm:
         func_name = nm.group(1).strip()
-        arg_block = re.search(r'<(?:arguments|parameters|args)>(.*?)(?:</(?:arguments|parameters|args)>|$)', text, re.DOTALL | re.IGNORECASE)
-        if arg_block:
-            body = arg_block.group(1).strip()
-            try:
-                args = json.loads(body)
-                if isinstance(args, dict):
+        if not valid_names or func_name in valid_names:
+            arg_block = re.search(r'<(?:arguments|parameters|args)>(.*?)(?:</(?:arguments|parameters|args)>|$)', text, re.DOTALL | re.IGNORECASE)
+            if arg_block:
+                body = arg_block.group(1).strip()
+                try:
+                    args = json.loads(body)
+                    if isinstance(args, dict):
+                        return func_name, args
+                except Exception:
+                    pass
+                tag_params = re.findall(r'<([a-zA-Z0-9_]+)>(.*?)</\1>', body, re.DOTALL)
+                if tag_params:
+                    args = {pname.strip(): pval.strip() for pname, pval in tag_params}
                     return func_name, args
-            except Exception:
-                pass
-            tag_params = re.findall(r'<([a-zA-Z0-9_]+)>(.*?)</\1>', body, re.DOTALL)
-            if tag_params:
-                args = {pname.strip(): pval.strip() for pname, pval in tag_params}
-                return func_name, args
 
     # Format 5: <tool_name><param>val</param></tool_name>
+    # Note: Only match known tool names if valid_names is given, avoiding false positives from HTML like <div>
     direct_tool = re.search(r'<([a-zA-Z_][a-zA-Z0-9_]*)>(.*?)</\1>', text, re.DOTALL)
     if direct_tool:
         tname = direct_tool.group(1).strip()
-        if tname.lower() not in ('think', 'tool_call', 'tool_response'):
+        if (not valid_names or tname in valid_names) and tname.lower() not in ('think', 'tool_call', 'tool_response'):
             body = direct_tool.group(2).strip()
             tag_params = re.findall(r'<([a-zA-Z0-9_]+)>(.*?)</\1>', body, re.DOTALL)
             if tag_params:

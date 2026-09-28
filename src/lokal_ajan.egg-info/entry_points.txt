@@ -1,2 +1,4 @@
 [console_scripts]
+locai = lokal_ajan.cli:app
+localajan = lokal_ajan.cli:app
 lokal-ajan = lokal_ajan.cli:app

@@ -1,3 +1,4 @@
+import time
 import json
 import httpx
 from typing import Iterator, Dict, Any, List, Optional
@@ -34,34 +35,47 @@ def chat_stream(
         if "temperature" in options:
             payload["temperature"] = options["temperature"]
         if "num_ctx" in options:
-            payload["max_tokens"] = 4096 # Provide a reasonable max_tokens for completions
+            payload["max_tokens"] = options["num_ctx"]
 
-    try:
-        with httpx.stream("POST", url, headers=headers, json=payload, timeout=None) as response:
-            response.raise_for_status()
-            for line in response.iter_lines():
-                if not line:
-                    continue
-                if line == "data: [DONE]":
-                    break
-                if line.startswith("data: "):
-                    line = line[6:]
-                    try:
-                        data = json.loads(line)
-                        if "choices" in data and len(data["choices"]) > 0:
-                            delta = data["choices"][0].get("delta", {})
-                            if "content" in delta and delta.get("content"):
-                                yield delta["content"]
-                    except json.JSONDecodeError:
-                        pass
-    except httpx.ConnectError as e:
-        raise OpenRouterConnectionError(f"OpenRouter'a bağlanılamadı. Detay: {e}") from e
-    except httpx.HTTPStatusError as e:
-        error_text = ""
+    max_retries = 3
+    for attempt in range(max_retries):
         try:
-            e.response.read()
-            error_text = e.response.text[:300]
-        except Exception:
-            pass
-        raise OpenRouterConnectionError(f"OpenRouter hata döndürdü ({e.response.status_code}): {error_text}") from e
+            with httpx.stream("POST", url, headers=headers, json=payload, timeout=None) as response:
+                if response.status_code >= 400:
+                    if response.status_code in (429, 500, 502, 503, 504) and attempt < max_retries - 1:
+                        time.sleep(2 ** attempt)
+                        continue
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if not line:
+                        continue
+                    if line == "data: [DONE]":
+                        break
+                    if line.startswith("data: "):
+                        line = line[6:]
+                        try:
+                            data = json.loads(line)
+                            if "choices" in data and len(data["choices"]) > 0:
+                                delta = data["choices"][0].get("delta", {})
+                                if "content" in delta and delta.get("content"):
+                                    yield delta["content"]
+                        except json.JSONDecodeError:
+                            pass
+                return
+        except httpx.ConnectError as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise OpenRouterConnectionError(f"OpenRouter'a bağlanılamadı. Detay: {e}") from e
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (429, 500, 502, 503, 504) and attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            error_text = ""
+            try:
+                e.response.read()
+                error_text = e.response.text[:300]
+            except Exception:
+                pass
+            raise OpenRouterConnectionError(f"OpenRouter hata döndürdü ({e.response.status_code}): {error_text}") from e
 

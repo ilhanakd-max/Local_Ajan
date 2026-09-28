@@ -120,16 +120,18 @@ REGEX_EN_DICT = [
     (r"Otomatik Onay:", "Auto-Approved:"),
 ]
 
+_COMPILED_EN_DICT = [(re.compile(pattern), replacement) for pattern, replacement in REGEX_EN_DICT]
+
 def load_lang(config_lang):
     global CURRENT_LANG
     CURRENT_LANG = config_lang if config_lang in ["en", "tr"] else "en"
 
 def translate(text: str) -> str:
-    if CURRENT_LANG == "tr":
+    if CURRENT_LANG == "tr" or not text:
         return text  # Turkish is native
         
     res = text
-    for pattern, replacement in REGEX_EN_DICT:
-        res = re.sub(pattern, replacement, res)
+    for pattern, replacement in _COMPILED_EN_DICT:
+        res = pattern.sub(replacement, res)
     return res
 

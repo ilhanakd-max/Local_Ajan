@@ -17,8 +17,9 @@ class RunShellTool(BaseTool):
     args_schema = RunShellArgs
     requires_confirm = True
     
-    def __init__(self, workdir: str = "."):
+    def __init__(self, workdir: str = ".", timeout: int = 120):
         self.workdir = workdir
+        self.timeout = timeout
         
     def run(self, command: str) -> str:
         try:
@@ -54,7 +55,7 @@ class RunShellTool(BaseTool):
                         cwd=self.workdir,
                         text=True,
                         capture_output=True,
-                        timeout=60
+                        timeout=self.timeout
                     )
                 except FileNotFoundError:
                     # Fallback to CMD if powershell binary is somehow not found
@@ -64,7 +65,7 @@ class RunShellTool(BaseTool):
                         cwd=self.workdir,
                         text=True,
                         capture_output=True,
-                        timeout=60
+                        timeout=self.timeout
                     )
             else:
                 result = subprocess.run(
@@ -73,7 +74,7 @@ class RunShellTool(BaseTool):
                     cwd=self.workdir,
                     text=True,
                     capture_output=True,
-                    timeout=60
+                    timeout=self.timeout
                 )
             
             output = ""
@@ -87,7 +88,7 @@ class RunShellTool(BaseTool):
                 
             return output
         except subprocess.TimeoutExpired:
-            return "Error: Command timed out after 60 seconds."
+            return f"Error: Command timed out after {self.timeout} seconds."
         except Exception as e:
             return f"Error running command: {e}"
 

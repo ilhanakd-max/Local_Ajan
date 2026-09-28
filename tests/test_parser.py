@@ -248,6 +248,13 @@ def test_extract_xml_tool_call_direct():
     assert args["path"] == "app.js"
     assert args["content"] == 'console.log("ready")'
 
+def test_xml_parser_ignores_arbitrary_html_tags():
+    # Regular HTML/XML markup should never be treated as tool calls
+    text = "Here is the layout: <div><p>Hello world</p></div> and a component: <custom_widget><title>Test</title></custom_widget>"
+    result = extract_tool_call(text)
+    assert result is None
+
+
 if __name__ == "__main__":
     tests = [
         test_extract_tag_format,
@@ -270,6 +277,7 @@ if __name__ == "__main__":
         test_extract_xml_tool_call_nemotron,
         test_extract_xml_tool_call_attributes,
         test_extract_xml_tool_call_direct,
+        test_xml_parser_ignores_arbitrary_html_tags,
     ]
     for t in tests:
         try:
@@ -280,4 +288,5 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"  ✗ {t.__name__}: {type(e).__name__}: {e}")
     print("Tüm testler tamamlandı.")
+
 

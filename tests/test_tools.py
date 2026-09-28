@@ -147,6 +147,33 @@ def test_edit_file_smart_whitespace_tolerance():
         assert "y = 200" in updated
 
 
+def test_tools_defense_in_depth_sandbox():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        w_tool = WriteFileTool(workdir=tmpdir)
+        r_tool = ReadFileTool(workdir=tmpdir)
+
+        # Relative paths should succeed
+        res = w_tool.run(path="allowed.txt", content="ok")
+        assert "Successfully" in res
+        content = r_tool.run(path="allowed.txt")
+        assert content == "ok"
+
+        # Path traversal should fail even when calling tool directly
+        outside_res = w_tool.run(path="../../evil.txt", content="bad")
+        assert "Error: Path is outside of workspace directory" in outside_res
+
+        outside_read = r_tool.run(path="../../etc/passwd")
+        assert "Error: Path is outside of workspace directory" in outside_read
+
+
+def test_run_shell_tool_configurable_timeout():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Tool with 1 second timeout
+        shell = RunShellTool(workdir=tmpdir, timeout=1)
+        res = shell.run(command="python3 -c 'import time; time.sleep(3)'")
+        assert "timed out after 1 seconds" in res
+
+
 if __name__ == "__main__":
     tests = [
         test_fs_tools_crud,
@@ -157,6 +184,8 @@ if __name__ == "__main__":
         test_auto_confirm,
         test_agent_loop_update_model,
         test_edit_file_smart_whitespace_tolerance,
+        test_tools_defense_in_depth_sandbox,
+        test_run_shell_tool_configurable_timeout,
     ]
     passed = 0
     for t in tests:

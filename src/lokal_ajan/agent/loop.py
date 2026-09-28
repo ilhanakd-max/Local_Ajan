@@ -14,6 +14,7 @@ from lokal_ajan.llm.ninerouter_client import chat_stream as ninerouter_chat_stre
 from lokal_ajan.llm.groq_client import chat_stream as groq_chat_stream, GroqConnectionError
 from lokal_ajan.agent.context import truncate_tool_output, prepare_context
 from rich.console import Console
+from lokal_ajan.config import Config
 
 from lokal_ajan.i18n_patch import patch_rich
 patch_rich()
@@ -21,7 +22,7 @@ patch_rich()
 console = Console()
 
 class AgentLoop:
-    def __init__(self, model_name: str, profile: ModelProfile, host: str, workdir: str, config: dict, worker_model: str = None, auto_confirm: bool = True, gpu_mode: bool = False, ponytail_enabled: bool = False, session_name: str = "default"):
+    def __init__(self, model_name: str, profile: ModelProfile, host: str, workdir: str, config: Config, worker_model: str = None, auto_confirm: bool = True, gpu_mode: bool = False, ponytail_enabled: bool = False, session_name: str = "default"):
         self.model_name = model_name
         self.profile = profile
         self.host = host
@@ -35,16 +36,24 @@ class AgentLoop:
         self.session_name = session_name
         self._last_call_key = None
         self._last_call_success = False
+        self._repeat_count = 0
+
 
         
         # Initialize shell tool with workdir, and ensure existing tool instance has updated workdir
         from lokal_ajan.tools.shell_tool import RunShellTool
         shell_tool = registry.get_tool("run_shell")
         if not shell_tool:
-            shell_tool = RunShellTool(workdir=self.workdir)
+            shell_tool = RunShellTool(workdir=self.workdir, timeout=self.config.shell_timeout)
             registry.register(shell_tool)
         else:
             shell_tool.workdir = self.workdir
+            shell_tool.timeout = self.config.shell_timeout
+
+        # Update workdir on all registered tools for defense-in-depth sandbox enforcement
+        for tool in registry.get_all_tools():
+            if hasattr(tool, "workdir"):
+                tool.workdir = self.workdir
 
         # Initialize tools schema
         self.tools_schema = registry.get_all_schemas()
@@ -53,6 +62,11 @@ class AgentLoop:
         self.delegate_tool = None
         if self.worker_model:
             self._ensure_delegate_tool()
+
+        # Set system prompt
+        is_orch = bool(self.worker_model)
+        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        self.history.add_message("system", sys_prompt)
 
     def _ensure_delegate_tool(self):
         if self.delegate_tool is not None:
@@ -91,7 +105,9 @@ class AgentLoop:
                     if msg["role"] == "assistant":
                         content = (msg.get("content") or "").strip()
                         if content and "<tool_call>" not in content:
-                            return content[:2000]
+                            if len(content) > 8000:
+                                return content[:8000] + "\n... (özet kesildi)"
+                            return content
                 return "İşçi model yanıt döndürmedi."
             
             def run(self, task: str):
@@ -178,11 +194,6 @@ class AgentLoop:
             if t.get("name") not in ("write_file", "edit_file", "run_shell")
         ]
         self.tools_schema.append(self.delegate_tool.get_schema())
-
-        # Set system prompt
-        is_orch = bool(self.worker_model)
-        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
-        self.history.add_message("system", sys_prompt)
 
     def reset_session(self):
         """
@@ -597,10 +608,8 @@ class AgentLoop:
                         call_path = args.get("path", "")
                         content_hash = hash(args.get("content", "")) if "content" in args else hash(json.dumps(args, sort_keys=True))
                         call_sig = (tool_name, call_path, content_hash)
-                        call_key = (tool_name, json.dumps(args, sort_keys=True, ensure_ascii=False)[:200])
                     except Exception:
                         call_sig = (tool_name, str(args)[:200])
-                        call_key = (tool_name, str(args)[:200])
 
                     past_occurrences = step_executed_calls.get(call_sig, 0)
                     if past_occurrences >= 1:
@@ -627,34 +636,14 @@ class AgentLoop:
                     # NOTE: step_executed_calls is set AFTER successful execution (below)
                     # Failed calls are NOT recorded so the model can retry with corrected params.
 
-                    if call_key == self._last_call_key and self._last_call_success:
-                        self._repeat_count += 1
-                        if self._repeat_count < 2:
-                            console.print(
-                                f"[bold yellow]⚠ Aynı araç çağrısı tekrarlandı ({tool_name}). Modele uyarı gönderiliyor...[/bold yellow]"
-                            )
-                            all_results.append(
-                                f"UYARI: '{tool_name}' aracını aynı parametrelerle az önce zaten çalıştırdın. "
-                                f"Aynı aracı tekrar çağırma! Kullanıcıya işlemin tamamlandığını bildir ve bitir."
-                            )
-                            continue
-                        else:
-                            console.print("\n[bold green]✓ Tüm işlemler tamamlandı (aynı araç çağrısı tekrarlandığı için döngü sonlandırıldı).[/bold green]\n")
-                            self.history.add_message("assistant", "İstenen tüm işlemler başarıyla tamamlandı.")
-                            batch_aborted = True
-                            break
-                    else:
-                        self._last_call_key = call_key
-                        self._repeat_count = 0
-
-                    
                     # Batch write pseudo-tool from the parser's code-block fallback
                     if tool_name == "_write_multiple":
                         self._handle_batch_write(args)
                         step_count += 1
                         console.print("\n[bold green]✓ Dosyalar kaydedildi.[/bold green]\n")
-                        batch_aborted = True  # no need to continue, all files written
-                        break
+                        all_results.append(f"'_write_multiple' → {len(args.get('files', []))} dosya kaydedildi.")
+                        step_executed_calls[call_sig] = 1
+                        continue
                     
                     tool = registry.get_tool(tool_name)
                     if not tool and tool_name == "delegate_task" and self.delegate_tool:

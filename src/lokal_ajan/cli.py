@@ -95,7 +95,7 @@ def switch_model(agent: AgentLoop, config):
         return
     
     if new_model.startswith("openrouter/"):
-        ensure_openrouter_key(config)
+        config.openrouter_api_key = ensure_openrouter_key(config)
         agent.config.openrouter_api_key = config.openrouter_api_key
         
     new_profile = get_profile_for_model(new_model, ollama_host=config.ollama_host)
@@ -166,7 +166,6 @@ def ensure_openrouter_key(config):
         console.print("Anahtarınızı ücretsiz olarak şu adresten alabilirsiniz: [cyan]https://openrouter.ai/keys[/cyan]")
         key = Prompt.ask("Lütfen OpenRouter API anahtarınızı yapıştırın")
         if key.strip():
-            config.openrouter_api_key = key.strip()
             from lokal_ajan.config import CONFIG_PATH
             try:
                 CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -175,8 +174,11 @@ def ensure_openrouter_key(config):
                 console.print("[green]API anahtarı config dosyasına başarıyla kaydedildi![/green]\n")
             except Exception as e:
                 console.print(f"[red]Anahtar kaydedilemedi: {e}[/red]\n")
+            return key.strip()
         else:
             console.print("[red]Anahtar girilmedi. İşlem başarısız olabilir.[/red]\n")
+            return ""
+    return config.openrouter_api_key
 
 def check_for_updates():
     import importlib.metadata
@@ -270,7 +272,7 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
             console.print(f"[dim yellow]ℹ '{old_model}' sistemde bulunamadı, yüklü model seçildi: [bold green]{target_model}[/bold green][/dim yellow]")
     
     if target_model.startswith("openrouter/") or (worker_model and worker_model.startswith("openrouter/")):
-        ensure_openrouter_key(config)
+        config.openrouter_api_key = ensure_openrouter_key(config)
         
     profile = get_profile_for_model(target_model, ollama_host=config.ollama_host)
     
@@ -537,7 +539,7 @@ def run_cmd(
     target_model = model or config.default_model
     
     if target_model.startswith("openrouter/") or (worker_model and worker_model.startswith("openrouter/")):
-        ensure_openrouter_key(config)
+        config.openrouter_api_key = ensure_openrouter_key(config)
         
     profile = get_profile_for_model(target_model, ollama_host=config.ollama_host)
     if gpu_mode and profile.num_ctx > 8192:

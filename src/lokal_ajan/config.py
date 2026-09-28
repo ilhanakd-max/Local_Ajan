@@ -55,29 +55,36 @@ class Config(BaseModel):
     max_steps: int = 20
     worker_max_retries: int = 2
     require_confirm_for: list[str] = ["write_file", "edit_file", "run_shell"]
+    shell_timeout: int = 120
 
 def load_config(path: Path = None) -> Config:
     """
     ~/.config/lokal-ajan/config.toml (veya LOKAL_AJAN_CONFIG env değişkeni
     ile belirtilen dosya) varsa yükler; yoksa/parse edilemezse sessizce
     varsayılan Config'e düşer.
-
-    Örnek config.toml:
-        default_model = "qwen3:1.7b"
-        ollama_host = "http://localhost:11434"
-        openrouter_api_key = "..."
-        groq_api_key = "..."
-        max_steps = 20
-        require_confirm_for = ["write_file", "edit_file", "run_shell"]
+    Ayrıca TOML dosyasında açıkça bir model belirtilmemişse, son kullanılan
+    state (durum) modelini okuyarak iki kaynak arasındaki uyumu sağlar.
     """
     config_path = path or CONFIG_PATH
-    if tomllib is None or not config_path.is_file():
-        return Config()
+    data = {}
+    if tomllib is not None and config_path.is_file():
+        try:
+            with open(config_path, "rb") as f:
+                data = tomllib.load(f)
+        except Exception:
+            data = {}
+
+    # State ile senkronizasyon: TOML'da açıkça model yoksa son kullanılan modeli al
+    if "default_model" not in data:
+        try:
+            state = load_state()
+            saved_model = state.get("model") or state.get("last_model")
+            if saved_model:
+                data["default_model"] = saved_model
+        except Exception:
+            pass
 
     try:
-        with open(config_path, "rb") as f:
-            data = tomllib.load(f)
         return Config(**data)
     except Exception:
-        # Bozuk/eksik bir config dosyası uygulamayı çökertmemeli.
         return Config()

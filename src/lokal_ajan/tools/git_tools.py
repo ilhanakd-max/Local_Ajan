@@ -3,6 +3,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from .base import BaseTool
 from .registry import registry
+from lokal_ajan.safety.sandbox import get_safe_path
 
 
 class GitStatusArgs(BaseModel):
@@ -15,8 +16,13 @@ class GitStatusTool(BaseTool):
     args_schema = GitStatusArgs
     requires_confirm = False
 
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+
     def run(self, path: str = ".") -> str:
         try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
             target_dir = Path(path).resolve()
             res = subprocess.run(
                 ["git", "status", "--short", "--branch"],
@@ -29,6 +35,8 @@ class GitStatusTool(BaseTool):
                 return f"Git error ({res.returncode}): {res.stderr.strip() or 'Not a git repository'}"
             out = res.stdout.strip()
             return out if out else "Working tree clean (no changes)."
+        except ValueError as e:
+            return f"Error: {e}"
         except Exception as e:
             return f"Error running git status: {e}"
 
@@ -44,8 +52,13 @@ class GitDiffTool(BaseTool):
     args_schema = GitDiffArgs
     requires_confirm = False
 
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+
     def run(self, staged: bool = False, path: str = ".") -> str:
         try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
             target_dir = Path(path).resolve()
             cwd = target_dir if target_dir.is_dir() else target_dir.parent
             file_arg = [str(target_dir)] if target_dir.is_file() else []
@@ -66,6 +79,8 @@ class GitDiffTool(BaseTool):
                 return f"Git error ({res.returncode}): {res.stderr.strip() or 'Not a git repository'}"
             out = res.stdout.strip()
             return out if out else "No changes found in diff."
+        except ValueError as e:
+            return f"Error: {e}"
         except Exception as e:
             return f"Error running git diff: {e}"
 
