@@ -158,6 +158,12 @@ Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini enge
 
 - Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
 
+
+
+## 14. v0.3.11 — release: v0.3.11 - v0.3.10 - loop protection, windows powershell base64 and stability improvements
+
+- Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .

@@ -116,6 +116,9 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
             balanced = _extract_balanced_json(inner)
             if balanced:
                 result = _try_parse_tool_json(balanced)
+        # Try <tool_call>name<arg_key>k</arg_key><arg_value>v</arg_value></tool_call> format
+        if not result:
+            result = _try_parse_arg_key_value_format(inner, valid_tool_names)
         if result and result[0] in valid_tool_names:
             return result
 
@@ -213,6 +216,8 @@ def extract_all_tool_calls(text: str, extra_valid_names: Optional[Set[str]] = No
                 balanced = _extract_balanced_json(inner)
                 if balanced:
                     result = _try_parse_tool_json(balanced)
+            if not result:
+                result = _try_parse_arg_key_value_format(inner, valid_tool_names)
             if result and result[0] in valid_tool_names:
                 results.append(result)
 
@@ -523,3 +528,42 @@ def _try_parse_xml_tool_call(text: str, valid_names: Optional[Set[str]] = None) 
 
     return None
 
+
+def _try_parse_arg_key_value_format(text: str, valid_names: Optional[Set[str]] = None) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """Parse tool calls in <tool_call>name<arg_key>k</arg_key><arg_value>v</arg_value></tool_call> format.
+
+    Some free OpenRouter models produce:
+      <tool_call>list_dir<arg_key>path</arg_key><arg_value>/some/path</arg_value></tool_call>
+
+    This function extracts the tool name (text before the first '<arg_key>') and
+    paired <arg_key>/<arg_value> tags as arguments.
+    """
+    if not text or '<arg_key>' not in text:
+        return None
+
+    # The tool name is the text before the first '<arg_key>' tag
+    first_tag = text.find('<arg_key>')
+    if first_tag <= 0:
+        return None
+
+    tool_name = text[:first_tag].strip()
+    # Clean any stray XML tags from tool name
+    tool_name = re.sub(r'<[^>]*>', '', tool_name).strip()
+    if not tool_name or not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', tool_name):
+        return None
+
+    if valid_names and tool_name not in valid_names:
+        return None
+
+    # Extract all <arg_key>k</arg_key><arg_value>v</arg_value> pairs
+    keys = re.findall(r'<arg_key>(.*?)</arg_key>', text, re.DOTALL)
+    values = re.findall(r'<arg_value>(.*?)</arg_value>', text, re.DOTALL)
+
+    if not keys or len(keys) != len(values):
+        return None
+
+    args = {}
+    for k, v in zip(keys, values):
+        args[k.strip()] = v.strip()
+
+    return tool_name, args

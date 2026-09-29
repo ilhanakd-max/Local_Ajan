@@ -411,7 +411,7 @@ class AgentLoop:
                 in_tool_mode = False
                 
                 tool_marker_re = re.compile(
-                    r"(<\s*/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<function[=\s]|<delegate_task|<write_file|```(?:json)?\s*\{|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task)\()",
+                    r"(<\s*/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<function[=\s]|<delegate_task|<write_file|<arg_key|```(?:json)?\s*\{|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task)\()",
                     re.IGNORECASE,
                 )
 

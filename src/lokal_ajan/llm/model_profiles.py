@@ -56,11 +56,11 @@ PROFILES = [
     ),
     ModelProfile(
         name_pattern=r"^openrouter/",
-        num_ctx=8192,
+        num_ctx=32768,
         temperature=0.1,
         native_tool_call=True,
         prompt_level="standard",
-        max_tool_output=15000,
+        max_tool_output=30000,
     ),
     ModelProfile(
         name_pattern=r"^ninerouter/",

@@ -35,9 +35,10 @@ src/lokal_ajan/tools/git_tools.py
 src/lokal_ajan/tools/registry.py
 src/lokal_ajan/tools/shell_tool.py
 src/lokal_ajan/ui/console.py
-tests/test_groq_models.py
+tests/test_groq_profiles.py
 tests/test_history.py
 tests/test_ollama_timeout.py
+tests/test_openrouter_client.py
 tests/test_parser.py
 tests/test_parser_fixes.py
 tests/test_qwen3_optimizations.py

@@ -29,6 +29,9 @@ def switch_model(agent: AgentLoop, config):
     
     external_models = [
         "openrouter/free",
+        "openrouter/google/gemini-2.0-flash-lite-preview-02-05:free",
+        "openrouter/poolside/laguna-s-2.1:free",
+        "openrouter/cohere/north-mini-code:free",
     ]
     
     ollama_models = list_ollama_models(config.ollama_host) or []
@@ -40,7 +43,14 @@ def switch_model(agent: AgentLoop, config):
     
     for i, m in enumerate(all_models, 1):
         marker = " [yellow]◄ aktif[/yellow]" if m == agent.model_name else ""
-        category = "[blue][Groq/Cloud][/blue] " if m in external_models else "[cyan][Ollama][/cyan] "
+        if m.startswith("openrouter/"):
+            category = "[blue][OpenRouter][/blue] "
+        elif m.startswith("groq/"):
+            category = "[magenta][Groq][/magenta] "
+        elif m in external_models:
+            category = "[blue][Cloud][/blue] "
+        else:
+            category = "[cyan][Ollama][/cyan] "
         console.print(f"  [cyan]{i}[/cyan]. {category}{m}{marker}")
     
     choice = Prompt.ask("\nModel numarası (1 vb.) seçin veya ayar için '0' yazın (iptal için boş bırakın)")
