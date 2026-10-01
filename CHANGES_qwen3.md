@@ -164,6 +164,12 @@ Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini enge
 
 - Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
 
+
+
+## 15. v0.3.12 — release: v0.3.12 - fix: LLM parser robust optimizations and OpenRouter stream handling
+
+- Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .

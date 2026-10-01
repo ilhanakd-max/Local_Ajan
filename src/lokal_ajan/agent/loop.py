@@ -411,7 +411,7 @@ class AgentLoop:
                 in_tool_mode = False
                 
                 tool_marker_re = re.compile(
-                    r"(<\s*/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<function[=\s]|<delegate_task|<write_file|<arg_key|```(?:json)?\s*\{|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task)\()",
+                    r"(<\s*/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<\s*f\s*u\s*n\s*c\s*t\s*i\s*o\s*n|<delegate_task|<write_file|<arg_key|```(?:json)?\s*\{|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task)\()",
                     re.IGNORECASE,
                 )
 
@@ -461,7 +461,7 @@ class AgentLoop:
                         # Normal metin: tampon kontrolü yap (yarım tag sızıntısını engelle)
                         tail = full_response[printed_len:]
                         partial_tag_match = re.search(
-                            r"(<\s*/?\s*t[a-zA-Z0-9_\s]*|<tool_?[a-zA-Z0-9_]*|<\|tool_?[a-zA-Z0-9_]*|<function[a-zA-Z0-9_]*|\[(?:delegate|write|read|edit|list|glob|grep|git|run)[a-zA-Z0-9_]*)$",
+                            r"(<\s*/?\s*t[a-zA-Z0-9_\s]*|<tool_?[a-zA-Z0-9_]*|<\|tool_?[a-zA-Z0-9_]*|<\s*/?\s*f[a-zA-Z0-9_\s]*|\[(?:delegate|write|read|edit|list|glob|grep|git|run)[a-zA-Z0-9_]*)$",
                             tail,
                             re.IGNORECASE,
                         )

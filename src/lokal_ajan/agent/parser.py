@@ -26,10 +26,35 @@ def _normalize_broken_tags(text: str) -> str:
         text,
         flags=re.IGNORECASE,
     )
-    # Closing tag: same, but with optional "/" prefix
     text = re.sub(
         r'<\s*/\s*t\s*o\s*o\s*l\s*[_\s]*c\s*a\s*l\s*l?\s*>',
         '</tool_call>',
+        text,
+        flags=re.IGNORECASE,
+    )
+    # Fix broken function tags e.g. <functio\n\nn>
+    text = re.sub(
+        r'<\s*f\s*u\s*n\s*c\s*t\s*i\s*o\s*n',
+        '<function',
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r'<\s*/\s*f\s*u\s*n\s*c\s*t\s*i\s*o\s*n\s*>',
+        '</function>',
+        text,
+        flags=re.IGNORECASE,
+    )
+    # Fix broken parameter/param tags e.g. <param \nname="...">
+    text = re.sub(
+        r'<\s*p\s*a\s*r\s*a\s*m\s*e\s*t\s*e\s*r',
+        '<parameter',
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r'<\s*p\s*a\s*r\s*a\s*m',
+        '<param',
         text,
         flags=re.IGNORECASE,
     )
@@ -480,7 +505,7 @@ def _try_parse_xml_tool_call(text: str, valid_names: Optional[Set[str]] = None) 
         if not valid_names or func_name in valid_names:
             body = m.group(2)
             param_pattern = re.compile(
-                r'<parameter(?:=|\s+name=|\s+)[\"\'\']?([a-zA-Z0-9_]+)[\"\'\']?>(.*?)(?:</parameter>|$)',
+                r'<(?:parameter|param)(?:=|\s+name=|\s+)[\"\'\']?([a-zA-Z0-9_]+)[\"\'\']?>(.*?)(?:</(?:parameter|param)>|$)',
                 re.DOTALL | re.IGNORECASE
             )
             params = param_pattern.findall(body)
