@@ -32,11 +32,13 @@ src/lokal_ajan/tools/__init__.py
 src/lokal_ajan/tools/base.py
 src/lokal_ajan/tools/fs_tools.py
 src/lokal_ajan/tools/git_tools.py
+src/lokal_ajan/tools/office_tools.py
 src/lokal_ajan/tools/registry.py
 src/lokal_ajan/tools/shell_tool.py
 src/lokal_ajan/ui/console.py
 tests/test_groq_profiles.py
 tests/test_history.py
+tests/test_office_tools.py
 tests/test_ollama_timeout.py
 tests/test_openrouter_client.py
 tests/test_parser.py

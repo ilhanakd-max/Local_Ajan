@@ -170,6 +170,18 @@ Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini enge
 
 - Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
 
+## 16. v0.3.13 — release: v0.3.13 - feat: office tools (read/write Excel & PDF) and binary file recovery hints
+
+- **Excel ve PDF Araçları Eklendi:**
+  - `read_excel`: Excel tablolarını (.xlsx) okuyup Markdown formatında ajana sunar.
+  - `write_excel`: JSON verisini (.xlsx) formatında tablo olarak kaydeder.
+  - `read_pdf`: PDF belgelerinden metin çıkarır.
+  - `write_pdf`: Ajanın ürettiği metinlerden standart PDF oluşturur.
+- **Akıllı Hata & Yönlendirme Koruması:**
+  - Küçük modellerin PDF ve Excel dosyalarını yanlışlıkla düz metin okuma aracı olan `read_file` ile açmaya çalışıp `utf-8` hatası alması engellendi.
+  - İlgili araca yönlendirici rehber hata mesajları (`Please use 'read_pdf' / 'read_excel' instead`) eklendi.
+- **Kapsamlı Test Kapsamı:** Yeni ofis araçları ve güvenlik kontrolleri için birim testler eklendi.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .

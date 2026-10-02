@@ -14,7 +14,7 @@ Turn small local LLMs into practical coding agents.
 LocAi is a cross-platform (Windows, macOS, Linux) terminal-based agentic CLI that gives LLMs the ability to read files, modify code, execute commands, inspect projects, use tools and perform multi-step tasks.
 Designed with a special focus on small and resource-efficient models such as Qwen3 0.6B / 1.7B / 4B.
 
-📦 **Version:** `0.3.12` • 📝 **Changelog:** [CHANGES_qwen3.md](CHANGES_qwen3.md)
+📦 **Version:** `0.3.13` • 📝 **Changelog:** [CHANGES_qwen3.md](CHANGES_qwen3.md)
 
 [🇹🇷 Türkçe](#türkçe-kılavuz) • [🇬🇧 English](#english-guide)
 
@@ -75,6 +75,7 @@ LocAi is designed around that idea.
 - 🔧 **Native-style tool calling**
 - 📁 **Project file access**
 - ✏️ **Code editing**
+- 📊 **Office documents (Excel & PDF)**
 - 💻 **Shell / terminal execution**
 - 🔒 **Workspace sandbox**
 - 🔄 **Multi-step agent loop**
@@ -119,6 +120,10 @@ LocAi gives the model access to controlled development tools. Current core tools
 | `run_shell` | Execute terminal commands |
 | `git_status` | Inspect Git status |
 | `git_diff` | Inspect changes |
+| `read_excel` | Read Excel spreadsheets (.xlsx) as Markdown table |
+| `write_excel` | Create Excel spreadsheets (.xlsx) from JSON data |
+| `read_pdf` | Extract text content from PDF documents (.pdf) |
+| `write_pdf` | Generate PDF documents (.pdf) from text |
 
 This allows the LLM to work with a real project instead of only generating code in chat.
 
@@ -259,6 +264,7 @@ LocAi can be used for tasks such as:
 - **Code analysis:** Analyze this project and explain the architecture.
 - **Bug fixing:** Find the cause of the failing tests and fix it.
 - **Refactoring:** Refactor this module without changing its public API.
+- **Office & Data handling:** Read a schedule from a PDF file and generate an Excel spreadsheet.
 - **Web development:** Create a responsive landing page for this application.
 - **Project exploration:** Find all unused functions and report them.
 - **Testing:** Run the test suite and fix the first failing test.
@@ -416,6 +422,7 @@ LocAi, lokal LLM modellerini gerçek bir yazılım ajanına dönüştürmek amac
 Basit bir chatbot gibi yalnızca cevap üretmek yerine modelin:
 - 📁 dosyaları okumasına
 - ✏️ dosya oluşturup düzenlemesine
+- 📊 Excel (.xlsx) ve PDF belgelerini okuyup oluşturmasına
 - 🔎 proje içerisinde arama yapmasına
 - 💻 terminal komutları çalıştırmasına
 - 🌿 Git durumunu incelemesine
@@ -446,8 +453,8 @@ LocAi, özellikle küçük Qwen3 modelleri için çeşitli optimizasyonlar içer
 
 ### 🛠 Araçlar
 LocAi'nin temel araçları:  
-`read_file`, `write_file`, `edit_file`, `list_dir`, `glob`, `grep`, `run_shell`, `git_status`, `git_diff`  
-Bu araçlar sayesinde ajan gerçek proje dosyaları üzerinde çalışabilir.
+`read_file`, `write_file`, `edit_file`, `list_dir`, `glob`, `grep`, `run_shell`, `git_status`, `git_diff`, `read_excel`, `write_excel`, `read_pdf`, `write_pdf`  
+Bu araçlar sayesinde ajan gerçek proje dosyaları ve ofis belgeleri üzerinde çalışabilir.
 
 ### 🔒 Güvenlik & Derinlemesine Savunma (Defense-in-Depth)
 LLM'ye terminal erişimi vermek güçlü bir özellik olduğu kadar üst düzey güvenlik gerektirir. LocAi bu nedenle çalışma alanını çok katmanlı olarak sınırlandırır:
@@ -515,6 +522,7 @@ locai --model qwen3:1.7b --workdir D:\Projeler\Proje1
 ### 🧪 Örnek Görevler
 - "Bu projeyi analiz et ve mimarisini açıkla."
 - "Testleri çalıştır ve hataları düzelt."
+- "PDF ders programını oku ve Excel tablosu olarak düzenleyip kaydet."
 - "src klasöründeki TODO yorumlarını bul."
 - "Bu web sayfasını responsive hale getir."
 - "Git diff'i incele ve yapılan değişiklikleri açıkla."

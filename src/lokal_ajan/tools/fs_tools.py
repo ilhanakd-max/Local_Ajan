@@ -24,6 +24,14 @@ class ReadFileTool(BaseTool):
         try:
             if self.workdir:
                 path = get_safe_path(path, self.workdir)
+            
+            # Binary dosya koruması ve yönlendirme
+            lower_path = path.lower()
+            if lower_path.endswith('.pdf'):
+                return "Error: Cannot read PDF with 'read_file'. Please use the 'read_pdf' tool instead."
+            if lower_path.endswith('.xlsx') or lower_path.endswith('.xls'):
+                return "Error: Cannot read Excel with 'read_file'. Please use the 'read_excel' tool instead."
+
             with open(path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
@@ -60,6 +68,13 @@ class WriteFileTool(BaseTool):
         try:
             if self.workdir:
                 path = get_safe_path(path, self.workdir)
+            
+            lower_path = path.lower()
+            if lower_path.endswith('.pdf'):
+                return "Error: Cannot write PDF with 'write_file'. Please use the 'write_pdf' tool instead."
+            if lower_path.endswith('.xlsx') or lower_path.endswith('.xls'):
+                return "Error: Cannot write Excel with 'write_file'. Please use the 'write_excel' tool instead."
+
             os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(content)
