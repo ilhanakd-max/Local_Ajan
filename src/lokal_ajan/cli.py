@@ -23,8 +23,8 @@ patch_rich()
 
 app = typer.Typer(add_completion=False)
 
-def switch_model(agent: AgentLoop, config):
-    """Ollama ve Harici API modellerini listele ve kullanıcının seçtiği modele geç."""
+def switch_model(agent: AgentLoop, config, target_model_arg: str | None = None):
+    """Ollama ve Harici API modellerini listele ve kullanıcının seçtiği modele geç (ok tuşları destekli)."""
     from lokal_ajan.llm.ollama_client import list_ollama_models
     
     external_models = [
@@ -37,68 +37,150 @@ def switch_model(agent: AgentLoop, config):
     ollama_models = list_ollama_models(config.ollama_host) or []
     all_models = external_models + ollama_models
 
-    console.print("\n[bold green]Mevcut Modeller & Ayarlar:[/bold green]")
-    orch_status = f"[green]Açık (İşçi: {agent.worker_model})[/green]" if agent.worker_model else "[dim]Kapalı[/dim]"
-    console.print(f"  [cyan]0[/cyan]. [bold magenta][Ayar] Orkestratör Modunu Aç/Kapat[/bold magenta] (Durum: {orch_status})")
-    
-    for i, m in enumerate(all_models, 1):
-        marker = " [yellow]◄ aktif[/yellow]" if m == agent.model_name else ""
-        if m.startswith("openrouter/"):
-            category = "[blue][OpenRouter][/blue] "
-        elif m.startswith("groq/"):
-            category = "[magenta][Groq][/magenta] "
-        elif m in external_models:
-            category = "[blue][Cloud][/blue] "
-        else:
-            category = "[cyan][Ollama][/cyan] "
-        console.print(f"  [cyan]{i}[/cyan]. {category}{m}{marker}")
-    
-    choice = Prompt.ask("\nModel numarası (1 vb.) seçin veya ayar için '0' yazın (iptal için boş bırakın)")
-    
-    if not choice.strip():
-        console.print("[dim]İptal edildi.[/dim]")
-        return
-    
-    val = choice.strip()
     new_model = agent.model_name
     new_worker_model = agent.worker_model
-    
-    if val == "0":
+
+    if target_model_arg:
+        val = target_model_arg.strip()
+        if val == "0":
+            selected = "__orch__"
+        elif val.isdigit():
+            idx = int(val) - 1
+            if 0 <= idx < len(all_models):
+                selected = all_models[idx]
+            else:
+                console.print("[bold red]Geçersiz model seçim numarası.[/bold red]")
+                return
+        else:
+            selected = val
+    else:
+        orch_status = f"Açık (İşçi: {agent.worker_model})" if agent.worker_model else "Kapalı"
+        
+        options = []
+        options.append(("__orch__", f"⚙️  [Ayar] Orkestratör Modunu Aç/Kapat (Durum: {orch_status})"))
+        
+        default_opt = agent.model_name
+        for m in all_models:
+            marker = " [aktif]" if m == agent.model_name else ""
+            if m.startswith("openrouter/"):
+                category = "[OpenRouter]"
+            elif m.startswith("groq/"):
+                category = "[Groq]"
+            elif m in external_models:
+                category = "[Cloud]"
+            else:
+                category = "[Ollama]"
+            options.append((m, f"{category} {m}{marker}"))
+            
+        options.append(("__cancel__", "❌ [İptal / Vazgeç]"))
+        
+        selected = None
+        try:
+            from prompt_toolkit.shortcuts import choice
+            selected = choice(
+                message="Kullanılacak modeli seçin (Yukarı/Aşağı ok tuşları ve Enter):",
+                options=options,
+                default=default_opt if default_opt in [opt[0] for opt in options] else options[0][0]
+            )
+        except (KeyboardInterrupt, EOFError):
+            console.print("[dim]İptal edildi.[/dim]")
+            return
+        except Exception:
+            # Fallback for non-interactive terminal
+            console.print("\n[bold green]Mevcut Modeller & Ayarlar:[/bold green]")
+            orch_status = f"[green]Açık (İşçi: {agent.worker_model})[/green]" if agent.worker_model else "[dim]Kapalı[/dim]"
+            console.print(f"  [cyan]0[/cyan]. [bold magenta][Ayar] Orkestratör Modunu Aç/Kapat[/bold magenta] (Durum: {orch_status})")
+            
+            for i, m in enumerate(all_models, 1):
+                marker = " [yellow]◄ aktif[/yellow]" if m == agent.model_name else ""
+                if m.startswith("openrouter/"):
+                    category = "[blue][OpenRouter][/blue] "
+                elif m.startswith("groq/"):
+                    category = "[magenta][Groq][/magenta] "
+                elif m in external_models:
+                    category = "[blue][Cloud][/blue] "
+                else:
+                    category = "[cyan][Ollama][/cyan] "
+                console.print(f"  [cyan]{i}[/cyan]. {category}{m}{marker}")
+            
+            choice_input = Prompt.ask("\nModel numarası (1 vb.) seçin veya ayar için '0' yazın (iptal için boş bırakın)")
+            if not choice_input.strip():
+                console.print("[dim]İptal edildi.[/dim]")
+                return
+            val = choice_input.strip()
+            if val == "0":
+                selected = "__orch__"
+            elif val.isdigit():
+                idx = int(val) - 1
+                if 0 <= idx < len(all_models):
+                    selected = all_models[idx]
+                else:
+                    console.print("[bold red]Geçersiz seçim numarası.[/bold red]")
+                    return
+            else:
+                selected = val
+
+    if not selected or selected == "__cancel__":
+        console.print("[dim]İptal edildi.[/dim]")
+        return
+
+    if selected == "__orch__":
         if agent.worker_model:
-            # Turn it off instantly
             new_worker_model = None
             console.print("\n[bold yellow]Orkestratör modu kapatıldı.[/bold yellow]")
         else:
-            # Turn it on - only ask for worker model
             console.print("\n[bold magenta]--- Orkestratör Modu Kurulumu ---[/bold magenta]")
             console.print(f"[dim]Beyin modeliniz: {agent.model_name}[/dim]")
-            worker_choice = Prompt.ask("İşçi modelinin numarasını veya adını seçin")
             
-            if not worker_choice.strip():
+            worker_options = []
+            for m in all_models:
+                is_brain = " [Beyin]" if m == agent.model_name else ""
+                if m.startswith("openrouter/"):
+                    category = "[OpenRouter]"
+                elif m.startswith("groq/"):
+                    category = "[Groq]"
+                elif m in external_models:
+                    category = "[Cloud]"
+                else:
+                    category = "[Ollama]"
+                worker_options.append((m, f"{category} {m}{is_brain}"))
+            worker_options.append(("__cancel__", "❌ [İptal / Vazgeç]"))
+            
+            worker_selected = None
+            try:
+                from prompt_toolkit.shortcuts import choice
+                worker_selected = choice(
+                    message="İşçi (Worker) modelini seçin (Yukarı/Aşağı ok tuşları ve Enter):",
+                    options=worker_options,
+                    default=worker_options[0][0]
+                )
+            except (KeyboardInterrupt, EOFError):
                 console.print("[dim]İptal edildi.[/dim]")
                 return
-                
-            w_val = worker_choice.strip()
-            if w_val.isdigit():
-                idx_w = int(w_val) - 1
-                if 0 <= idx_w < len(all_models):
-                    new_worker_model = all_models[idx_w]
-                else:
-                    console.print("[bold red]Geçersiz işçi seçim numarası.[/bold red]")
+            except Exception:
+                for i, m in enumerate(all_models, 1):
+                    console.print(f"  {i}. {m}")
+                worker_choice = Prompt.ask("İşçi modelinin numarasını veya adını seçin (iptal için boş bırakın)")
+                if not worker_choice.strip():
+                    console.print("[dim]İptal edildi.[/dim]")
                     return
-            else:
-                new_worker_model = w_val
-    else:
-        # Standart model değiştirme
-        if val.isdigit():
-            idx = int(val) - 1
-            if 0 <= idx < len(all_models):
-                new_model = all_models[idx]
-            else:
-                console.print("[bold red]Geçersiz seçim numarası.[/bold red]")
+                w_val = worker_choice.strip()
+                if w_val.isdigit():
+                    idx_w = int(w_val) - 1
+                    if 0 <= idx_w < len(all_models):
+                        worker_selected = all_models[idx_w]
+                    else:
+                        console.print("[bold red]Geçersiz işçi seçim numarası.[/bold red]")
+                        return
+                else:
+                    worker_selected = w_val
+
+            if not worker_selected or worker_selected == "__cancel__":
+                console.print("[dim]İptal edildi.[/dim]")
                 return
-        else:
-            new_model = val
+            new_worker_model = worker_selected
+    else:
+        new_model = selected
 
     if new_model == agent.model_name and new_worker_model == agent.worker_model:
         console.print(f"[dim]Zaten [green]{new_model}[/green] (Ana) ve [green]{new_worker_model or 'Yok'}[/green] (İşçi) kullanılıyor.[/dim]")
@@ -235,7 +317,7 @@ def show_help():
     table.add_row("session save/  veya  /session save", "Oturumu otomatik isimle (veya /session save <ad>) kaydeder.")
     table.add_row("session load/  veya  /session load", "Kayıtlı oturumları ok tuşlarıyla (↑ / ↓) seçip yükler.")
     table.add_row("session list/  veya  /session list", "Projedeki tüm kayıtlı oturumları listeler.")
-    table.add_row("model/  veya  /model", "Modeli değiştirir veya Orkestratör modunu (Beyin+İşçi) açıp kapatır (sohbet geçmişi korunur!).")
+    table.add_row("model/  veya  /model", "Modeli ok tuşlarıyla (↑ / ↓) seçip değiştirir veya Orkestratör modunu yönetir.")
     table.add_row("language/  veya  /language", "Uygulama dilini İngilizce/Türkçe olarak değiştirir.")
     table.add_row("new/  veya  /new", "Mevcut sohbeti ve oturumu sıfırlayıp temiz sayfa açar.")
     table.add_row("ponytail/  veya  /ponytail", "Tembel Kıdemli Yazılımcı (minimalist kod) modunu açar/kapatır.")
@@ -328,7 +410,7 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
     console.print(f"Çalışma Dizini: [yellow]{workdir}[/yellow]")
     console.print("Yardım ve kısayol listesi: [bold cyan]help/[/bold cyan]")
     console.print("Oturumu kaydet: [bold cyan]session save/[/bold cyan]  |  Yükle (ok tuşlarıyla): [bold cyan]session load/[/bold cyan]")
-    console.print("Model değiştir: [bold cyan]model/[/bold cyan]  |  Sıfırla: [bold cyan]new/[/bold cyan]  |  Çıkış: [bold cyan]exit[/bold cyan]\n")
+    console.print("Model değiştir (ok tuşlarıyla): [bold cyan]model/[/bold cyan]  |  Sıfırla: [bold cyan]new/[/bold cyan]  |  Çıkış: [bold cyan]exit[/bold cyan]\n")
     
     # Arka planda kullanılmayan diğer Ollama modellerini bellekten boşalt
     from lokal_ajan.llm.ollama_client import free_unused_models
@@ -523,8 +605,11 @@ def start_interactive_session(model: str, workdir: str, worker_model: str = None
             console.print(f"\n[bold green]✓[/bold green] Dil değiştirildi: [bold]{new_lang.upper()}[/bold]. Uygulamayı yeniden başlatmanız önerilir.\n")
             continue
             
-        if norm in ("model", "models"):
-            switch_model(agent, config)
+        if norm in ("model", "models") or norm.startswith("model ") or norm.startswith("models "):
+            raw_tokens = cmd.split()
+            clean_tokens = [tok.strip("/") for tok in raw_tokens if tok.strip("/")]
+            target = clean_tokens[1] if len(clean_tokens) > 1 else None
+            switch_model(agent, config, target)
             continue
         
         if not agent.run_step(user_input):
