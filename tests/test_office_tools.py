@@ -34,11 +34,15 @@ def test_excel_write_and_read():
         assert "Successfully wrote" in res_write
         assert os.path.exists(excel_path)
 
-        # Read
+        # Read normal
         res_read = r_excel.run(path=excel_path)
         assert "Matematik" in res_read
         assert "Fizik" in res_read
-        assert "Ayşe" in res_read
+
+        # Read with max_rows
+        res_read_limit = r_excel.run(path=excel_path, max_rows=1)
+        assert "Matematik" in res_read_limit
+        assert "ilk 1 satır gösterildi" in res_read_limit
 
 def test_pdf_write_and_read():
     with tempfile.TemporaryDirectory() as tmpdir:

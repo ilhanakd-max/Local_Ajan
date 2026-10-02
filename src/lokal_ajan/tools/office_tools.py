@@ -10,14 +10,19 @@ from lokal_ajan.safety.sandbox import get_safe_path
 class ReadExcelArgs(BaseModel):
     path: str = Field(..., description="Path to the .xlsx file to read")
     sheet_name: str | None = Field(None, description="Name of the sheet to read. If null, reads the active sheet.")
+    max_rows: int | None = Field(100, description="Maximum number of rows to return (default 100)")
 
 def _df_to_markdown(df) -> str:
     try:
+        import tabulate  # noqa: F401
         return df.to_markdown(index=False)
     except Exception:
-        # Fallback if tabulate is not installed
+        # Robust fallback if tabulate is missing or fails
         headers = [str(c) for c in df.columns]
-        rows = [[str(val) if val is not None else "" for val in row] for row in df.values]
+        rows = [
+            [str(val) if val is not None and str(val) != "nan" else "" for val in row]
+            for row in df.values
+        ]
         col_widths = [max(len(h), max((len(r[i]) for r in rows), default=0)) for i, h in enumerate(headers)]
         header_line = "| " + " | ".join(h.ljust(col_widths[i]) for i, h in enumerate(headers)) + " |"
         sep_line = "| " + " | ".join("-" * max(col_widths[i], 3) for i in range(len(headers))) + " |"
@@ -36,11 +41,11 @@ class ReadExcelTool(BaseTool):
     def __init__(self, workdir: str | None = None):
         self.workdir = workdir
 
-    def run(self, path: str, sheet_name: str | None = None) -> str:
+    def run(self, path: str, sheet_name: str | None = None, max_rows: int | None = 100) -> str:
         try:
             import pandas as pd
         except ImportError:
-            return "Error: pandas is not installed. Please install pandas and openpyxl."
+            return "Error: pandas is not installed. Please install pandas, openpyxl and tabulate."
             
         try:
             if self.workdir:
@@ -54,11 +59,23 @@ class ReadExcelTool(BaseTool):
             if isinstance(df, dict):
                 outputs = []
                 for s_name, s_df in df.items():
-                    outputs.append(f"### Sheet: {s_name}\n" + (_df_to_markdown(s_df) if not s_df.empty else "_Empty sheet_"))
+                    if s_df.empty:
+                        outputs.append(f"### Sheet: {s_name}\n_Empty sheet_")
+                        continue
+                    total = len(s_df)
+                    if max_rows and total > max_rows:
+                        rendered = _df_to_markdown(s_df.head(max_rows)) + f"\n\n_... (ilk {max_rows} satır gösterildi, toplam {total} satır)_"
+                    else:
+                        rendered = _df_to_markdown(s_df)
+                    outputs.append(f"### Sheet: {s_name}\n" + rendered)
                 return "\n\n".join(outputs) if outputs else f"Excel file '{path}' is empty."
 
             if df.empty:
                 return f"Excel file '{path}' is empty."
+
+            total = len(df)
+            if max_rows and total > max_rows:
+                return _df_to_markdown(df.head(max_rows)) + f"\n\n_... (ilk {max_rows} satır gösterildi, toplam {total} satır)_"
                 
             return _df_to_markdown(df)
         except ValueError as e:
