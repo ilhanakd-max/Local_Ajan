@@ -191,6 +191,12 @@ Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini enge
   - `edit_excel_cells`: Tablonun genel yapısına dokunmadan sadece belirli koordinatlardaki hücreleri (örn: `B5`, `C10`) yeni değer veya formüllerle günceller.
 - **Kapsamlı Test Kapsamı:** Stil kopyalama ve formül koruma doğrulamaları birim testlere eklendi.
 
+
+
+## 18. v0.3.15 — release: v0.3.15 - v0.3.14 - feat: style and formula preserving excel tools (append_excel and edit_excel_cells)
+
+- Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .
