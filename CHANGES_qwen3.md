@@ -182,6 +182,12 @@ Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini enge
   - İlgili araca yönlendirici rehber hata mesajları (`Please use 'read_pdf' / 'read_excel' instead`) eklendi.
 - **Kapsamlı Test Kapsamı:** Yeni ofis araçları ve güvenlik kontrolleri için birim testler eklendi.
 
+
+
+## 17. v0.3.14 — release: v0.3.14 - v0.3.13 - feat: office tools (read/write excel and pdf) and binary file recovery hints
+
+- Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .
