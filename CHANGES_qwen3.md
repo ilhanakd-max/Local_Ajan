@@ -197,6 +197,12 @@ Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini enge
 
 - Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
 
+
+
+## 19. v0.3.16 — release: v0.3.16  feat: style and formula preserving excel tools (append_excel and edit_excel_cells)
+
+- Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
+
 ## Hızlı doğrulama
 ```bash
 pip install -e .
