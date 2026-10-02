@@ -123,6 +123,144 @@ class WriteExcelTool(BaseTool):
         except Exception as e:
             return f"Error writing excel file: {e}"
 
+class AppendExcelArgs(BaseModel):
+    path: str = Field(..., description="Path to the existing .xlsx file")
+    rows_json: str = Field(..., description="JSON list of rows to append (e.g. [['val1', 10], ['val2', 20]] or [{'Header1': 'val1', ...}])")
+    sheet_name: str | None = Field(None, description="Sheet name. If null, appends to the active sheet.")
+    copy_style: bool | None = Field(True, description="Whether to copy formatting, colors, and fonts from the preceding row")
+
+class AppendExcelTool(BaseTool):
+    name = "append_excel"
+    description = "Appends new rows to an existing Excel (.xlsx) file while preserving all existing styles, formulas, colors, and fonts"
+    args_schema = AppendExcelArgs
+    requires_confirm = True
+
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+
+    def run(self, path: str, rows_json: str, sheet_name: str | None = None, copy_style: bool = True) -> str:
+        try:
+            import openpyxl
+            from copy import copy
+        except ImportError:
+            return "Error: openpyxl is not installed."
+
+        try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
+
+            if not os.path.exists(path):
+                return f"Error: File '{path}' does not exist. Use 'write_excel' to create a new file first."
+
+            try:
+                rows_data = json.loads(rows_json)
+            except json.JSONDecodeError:
+                return "Error: rows_json must be valid JSON."
+
+            if not isinstance(rows_data, list):
+                return "Error: rows_json must be a list of rows."
+
+            if not rows_data:
+                return "No rows provided to append."
+
+            wb = openpyxl.load_workbook(path, data_only=False)
+            if sheet_name and sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+            else:
+                ws = wb.active
+
+            # Convert dict rows to ordered list if dicts are provided
+            sample = rows_data[0]
+            if isinstance(sample, dict):
+                header_row = [cell.value for cell in ws[1]]
+                converted_rows = []
+                for item in rows_data:
+                    if isinstance(item, dict):
+                        row = [item.get(h, "") for h in header_row]
+                        converted_rows.append(row)
+                    else:
+                        converted_rows.append(item)
+                rows_data = converted_rows
+
+            added_count = 0
+            for r_data in rows_data:
+                if not isinstance(r_data, (list, tuple)):
+                    r_data = [r_data]
+
+                prev_row_idx = ws.max_row
+                ws.append(list(r_data))
+                new_row_idx = ws.max_row
+                added_count += 1
+
+                if copy_style and prev_row_idx >= 1:
+                    for col_idx in range(1, len(r_data) + 1):
+                        prev_cell = ws.cell(row=prev_row_idx, column=col_idx)
+                        new_cell = ws.cell(row=new_row_idx, column=col_idx)
+                        if prev_cell.has_style:
+                            if prev_cell.font: new_cell.font = copy(prev_cell.font)
+                            if prev_cell.border: new_cell.border = copy(prev_cell.border)
+                            if prev_cell.fill: new_cell.fill = copy(prev_cell.fill)
+                            if prev_cell.number_format: new_cell.number_format = copy(prev_cell.number_format)
+                            if prev_cell.alignment: new_cell.alignment = copy(prev_cell.alignment)
+
+            wb.save(path)
+            return f"Successfully appended {added_count} row(s) to '{path}' (sheet: {ws.title}) preserving styles and formulas."
+        except ValueError as e:
+            return f"Error: {e}"
+        except Exception as e:
+            return f"Error appending to excel file: {e}"
+
+class EditExcelCellsArgs(BaseModel):
+    path: str = Field(..., description="Path to the existing .xlsx file")
+    updates_json: str = Field(..., description="JSON object mapping cell coordinates to values/formulas, e.g. {'B5': 150, 'C5': '=A5*B5'}")
+    sheet_name: str | None = Field(None, description="Sheet name. If null, uses the active sheet.")
+
+class EditExcelCellsTool(BaseTool):
+    name = "edit_excel_cells"
+    description = "Updates specific cell values or formulas in an Excel (.xlsx) file without affecting formatting, colors, or formulas in other cells"
+    args_schema = EditExcelCellsArgs
+    requires_confirm = True
+
+    def __init__(self, workdir: str | None = None):
+        self.workdir = workdir
+
+    def run(self, path: str, updates_json: str, sheet_name: str | None = None) -> str:
+        try:
+            import openpyxl
+        except ImportError:
+            return "Error: openpyxl is not installed."
+
+        try:
+            if self.workdir:
+                path = get_safe_path(path, self.workdir)
+
+            if not os.path.exists(path):
+                return f"Error: File '{path}' does not exist."
+
+            try:
+                updates = json.loads(updates_json)
+            except json.JSONDecodeError:
+                return "Error: updates_json must be valid JSON."
+
+            if not isinstance(updates, dict):
+                return "Error: updates_json must be a JSON dictionary mapping coordinates (e.g. 'A1') to values."
+
+            wb = openpyxl.load_workbook(path, data_only=False)
+            if sheet_name and sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+            else:
+                ws = wb.active
+
+            for coord, val in updates.items():
+                ws[coord] = val
+
+            wb.save(path)
+            return f"Successfully updated {len(updates)} cell(s) in '{path}' (sheet: {ws.title}) while preserving all existing formatting and formulas."
+        except ValueError as e:
+            return f"Error: {e}"
+        except Exception as e:
+            return f"Error updating excel cells: {e}"
+
 # --- PDF Tools ---
 
 class ReadPdfArgs(BaseModel):
@@ -236,5 +374,7 @@ class WritePdfTool(BaseTool):
 # Register tools
 registry.register(ReadExcelTool())
 registry.register(WriteExcelTool())
+registry.register(AppendExcelTool())
+registry.register(EditExcelCellsTool())
 registry.register(ReadPdfTool())
 registry.register(WritePdfTool())

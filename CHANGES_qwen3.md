@@ -184,9 +184,12 @@ Bu sürümde, ajanın görev bitiminde gereksiz kod döngülerine girmesini enge
 
 
 
-## 17. v0.3.14 — release: v0.3.14 - v0.3.13 - feat: office tools (read/write excel and pdf) and binary file recovery hints
+## 17. v0.3.14 — release: v0.3.14 - feat: style & formula preserving excel tools (append_excel & edit_excel_cells)
 
-- Bu sürümde genel hata düzeltmeleri ve kararlılık iyileştirmeleri yapıldı.
+- **Stil & Formül Korumalı Excel Düzenleme:**
+  - `append_excel`: Var olan bir Excel dosyasının renk, font, kenarlık ve formüllerini bozmadan en sona yeni satırlar ekler; önceki satırın stilini otomatik olarak yeni satırlara kopyalar (`copy_style`).
+  - `edit_excel_cells`: Tablonun genel yapısına dokunmadan sadece belirli koordinatlardaki hücreleri (örn: `B5`, `C10`) yeni değer veya formüllerle günceller.
+- **Kapsamlı Test Kapsamı:** Stil kopyalama ve formül koruma doğrulamaları birim testlere eklendi.
 
 ## Hızlı doğrulama
 ```bash

@@ -122,6 +122,8 @@ LocAi gives the model access to controlled development tools. Current core tools
 | `git_diff` | Inspect changes |
 | `read_excel` | Read Excel spreadsheets (.xlsx) as Markdown table |
 | `write_excel` | Create Excel spreadsheets (.xlsx) from JSON data |
+| `append_excel` | Append rows to Excel (.xlsx) preserving colors, fonts & formulas |
+| `edit_excel_cells` | Update specific Excel cells without affecting formatting |
 | `read_pdf` | Extract text content from PDF documents (.pdf) |
 | `write_pdf` | Generate PDF documents (.pdf) from text |
 
@@ -453,7 +455,7 @@ LocAi, özellikle küçük Qwen3 modelleri için çeşitli optimizasyonlar içer
 
 ### 🛠 Araçlar
 LocAi'nin temel araçları:  
-`read_file`, `write_file`, `edit_file`, `list_dir`, `glob`, `grep`, `run_shell`, `git_status`, `git_diff`, `read_excel`, `write_excel`, `read_pdf`, `write_pdf`  
+`read_file`, `write_file`, `edit_file`, `list_dir`, `glob`, `grep`, `run_shell`, `git_status`, `git_diff`, `read_excel`, `write_excel`, `append_excel`, `edit_excel_cells`, `read_pdf`, `write_pdf`  
 Bu araçlar sayesinde ajan gerçek proje dosyaları ve ofis belgeleri üzerinde çalışabilir.
 
 ### 🔒 Güvenlik & Derinlemesine Savunma (Defense-in-Depth)
