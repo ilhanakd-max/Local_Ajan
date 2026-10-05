@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logos/locai_horizontal.png" alt="LocAi Logo" width="300" />
+<img src="assets/logos/locai_center_transparent.png" alt="LocAi Logo" width="300" />
 
 
 # LocAi
@@ -418,7 +418,7 @@ See `LICENSE` for license information.
 
 <div align="center">
 
-<img src="assets/logos/locai_horizontal.png" alt="LocAi Logo" width="300" />
+<img src="assets/logos/locai_center_transparent.png" alt="LocAi Logo" width="300" />
 
   <b>LocAi</b><br>
   Small Models. Real Agents.<br>
