@@ -4,6 +4,13 @@
 **Small Models. Real Agents.**  
 *Lightweight Local Coding Agent for Ollama and Other LLM Providers*
 
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Ollama Supported](https://img.shields.io/badge/Ollama-Ready-black?logo=ollama)](https://ollama.ai)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Discussions](https://img.shields.io/badge/Discussions-Join-purple.svg)](https://github.com/ilhanakd-max/Local_Ajan/discussions)
+[![GitHub Stars](https://img.shields.io/github/stars/ilhanakd-max/Local_Ajan?style=social)](https://github.com/ilhanakd-max/Local_Ajan/stargazers)
+
 🌐 **Official Website:** [locai-cli.netlify.app](https://locai-cli.netlify.app/)
 
 ![LocAi Ekran Görüntüsü](assets/screenshot.png)
@@ -16,7 +23,7 @@ Designed with a special focus on small and resource-efficient models such as Qwe
 
 📦 **Version:** `0.3.16` • 📝 **Changelog:** [CHANGES_qwen3.md](CHANGES_qwen3.md)
 
-[🇹🇷 Türkçe](#türkçe-kılavuz) • [🇬🇧 English](#english-guide)
+[🇹🇷 Türkçe](#türkçe-kılavuz) • [🇬🇧 English](#english-guide) • [📦 Kurulum / Install](INSTALL.md) • [🤝 Katkı / Contribute](CONTRIBUTING.md) • [💬 Discussions](https://github.com/ilhanakd-max/Local_Ajan/discussions)
 
 </div>
 
@@ -212,6 +219,8 @@ LocAi is primarily designed around local models, but it seamlessly supports clou
 
 ### ⚡ Quick Start
 
+> 📦 **Detailed Installation Guide:** For complete cross-platform setup (Windows, macOS, Linux, GPU/RAM recommendations), see **[INSTALL.md](INSTALL.md)**.
+
 **1. Install pipx**  
 If pipx is not installed:
 ```bash
@@ -359,21 +368,17 @@ max_steps = 20
 ```
 The configuration system is designed to keep model and agent settings separate from the project itself.
 
-### 🧪 Development
-Clone the repository:
+### 🧪 Development & Contributing
+We welcome contributions! Please see **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines, coding conventions, and pull request procedures.
+
+Quick dev setup:
 ```bash
 git clone https://github.com/ilhanakd-max/Local_Ajan.git
 cd Local_Ajan
-```
-Install in editable mode:
-```bash
-pip install -e .
-```
-Run tests:
-```bash
+pip install -e ".[dev]"
 pytest
 ```
-The project is written for: Python 3.11+
+The project requires: Python 3.11+
 
 ### 🗺️ Roadmap
 LocAi is an evolving project. Potential future areas include:
@@ -497,6 +502,8 @@ Böylece uzun bir projeye daha sonra devam edilebilir. Model değiştirildiğind
 
 ### ⚡ Kurulum
 
+> 📦 **Ayrıntılı Kurulum Kılavuzu:** Windows, macOS ve Linux için adım adım yönergeler [INSTALL.md](INSTALL.md) dosyasında yer almaktadır.
+
 **pipx:**
 ```bash
 pip install pipx
@@ -530,8 +537,12 @@ locai --model qwen3:1.7b --workdir D:\Projeler\Proje1
 - "Git diff'i incele ve yapılan değişiklikleri açıkla."
 - "Projede kullanılmayan fonksiyonları bul."
 
+### 🤝 Katkıda Bulunma ve Topluluk
+Geliştirici topluluğuna katılmak ve katkıda bulunmak için [CONTRIBUTING.md](CONTRIBUTING.md) rehberini inceleyebilir, soru ve önerilerinizi [GitHub Discussions](https://github.com/ilhanakd-max/Local_Ajan/discussions) üzerinde paylaşabilirsiniz.
+
 ### 📌 Kısaca
 LocAi bir chatbot değil; LLM'yi gerçek bir proje üzerinde çalışabilen bir ajana dönüştürmeye çalışan hafif bir agent runtime'dır.
 
 **Small Models. Real Agents.**  
 Yerel yapay zekayı gerçek bir yazılım ajanına dönüştür.
+
