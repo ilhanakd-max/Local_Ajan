@@ -1,7 +1,5 @@
 <div align="center">
 
-
-
 # LocAi
 **Small Models. Real Agents.**  
 *Lightweight Local Coding Agent for Ollama and Other LLM Providers*
