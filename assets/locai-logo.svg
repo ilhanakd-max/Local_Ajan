@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#34d399"/></linearGradient></defs>
+<rect width="1024" height="1024" rx="220" fill="#080c16"/><rect x="82" y="82" width="860" height="860" rx="210" fill="#0b1220" stroke="#34d399" stroke-width="8"/>
+<path d="M690 290 A282 282 0 0 0 334 710" fill="none" stroke="#38bdf8" stroke-width="24" stroke-linecap="round"/><path d="M334 710 A282 282 0 0 0 690 290" fill="none" stroke="#34d399" stroke-width="24" stroke-linecap="round"/>
+<path d="M690 290 l-42 4 20 34z" fill="#34d399"/><path d="M334 710 l42-4-20-34z" fill="#38bdf8"/>
+<polygon points="512,330 659,415 659,585 512,670 365,585 365,415" fill="#101b2d" stroke="url(#g)" stroke-width="8"/>
+<circle cx="512" cy="500" r="102" fill="#0f172a" stroke="#34d399" stroke-width="7"/>
+<g stroke="#38bdf8" stroke-width="9" stroke-linecap="round"><path d="M430 450l45 25"/><path d="M594 450l-45 25"/><path d="M430 550l45-25"/><path d="M594 550l-45-25"/></g>
+<g fill="#34d399"><circle cx="430" cy="450" r="15"/><circle cx="594" cy="450" r="15"/><circle cx="430" cy="550" r="15"/><circle cx="594" cy="550" r="15"/><circle cx="512" cy="500" r="15"/></g>
+<text x="512" y="532" text-anchor="middle" font-family="Arial,sans-serif" font-size="88" font-weight="700" fill="#e2e8f0">&gt;_</text></svg>
