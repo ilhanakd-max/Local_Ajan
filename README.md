@@ -1,5 +1,8 @@
 <div align="center">
 
+<img src="assets/logos/locai_horizontal.png" alt="LocAi Logo" width="300" />
+
+
 # LocAi
 **Small Models. Real Agents.**  
 *Lightweight Local Coding Agent for Ollama and Other LLM Providers*
@@ -414,6 +417,9 @@ See `LICENSE` for license information.
 ---
 
 <div align="center">
+
+<img src="assets/logos/locai_horizontal.png" alt="LocAi Logo" width="300" />
+
   <b>LocAi</b><br>
   Small Models. Real Agents.<br>
   <i>Built for developers who want practical AI agents running directly in their terminal.</i>
