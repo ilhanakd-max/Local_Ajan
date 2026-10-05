@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/locai-logo.png" alt="LocAi Logo" width="160" />
+
 # LocAi
 **Small Models. Real Agents.**  
 *Lightweight Local Coding Agent for Ollama and Other LLM Providers*
