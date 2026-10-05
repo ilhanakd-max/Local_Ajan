@@ -88,7 +88,8 @@ Depo bağlantısı Twitter, LinkedIn, Reddit veya Discord'da paylaşıldığınd
 
 1. **Settings → General → Social preview** bölümüne gidin.
 2. **Edit → Upload an image** seçeneğini seçin.
-3. `assets/screenshot.png` veya LocAi logolu 1280x640px boyutlarında bir görsel yükleyin.
+3. Projede hazır olarak oluşturulan tam 1280x640 piksel boyutundaki `assets/social_preview.png` görselini yükleyin.
+
 
 ---
 
