@@ -15,6 +15,7 @@ from lokal_ajan.llm.groq_client import chat_stream as groq_chat_stream, GroqConn
 from lokal_ajan.agent.context import truncate_tool_output, prepare_context
 from rich.console import Console
 from lokal_ajan.config import Config
+from lokal_ajan.safety.guards import RepetitionLoopGuard, detect_text_repetition
 
 from lokal_ajan.i18n_patch import patch_rich
 patch_rich()
@@ -345,7 +346,7 @@ class AgentLoop:
         self.history.add_message("user", user_input)
         self._last_call_key = None
         self._last_call_success = False
-        step_executed_calls: dict = {}
+        loop_guard = RepetitionLoopGuard()
 
         # Long session memory warning (Madde 1)
         if len(self.history.messages) > 40 and not getattr(self, "_history_warned", False):
@@ -411,7 +412,7 @@ class AgentLoop:
                 in_tool_mode = False
                 
                 tool_marker_re = re.compile(
-                    r"(<\s*/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<\s*f\s*u\s*n\s*c\s*t\s*i\s*o\s*n|<delegate_task|<write_file|<arg_key|```(?:json)?\s*\{|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task)\()",
+                    r"(<\s*/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<\s*f\s*u\s*n\s*c\s*t\s*i\s*o\s*n|<delegate_task|<write_file|<arg_key|```(?:json)?\s*\{|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task|report_finding|semantic_code_search)\()",
                     re.IGNORECASE,
                 )
 
@@ -423,6 +424,10 @@ class AgentLoop:
                 for chunk in filter_thinking_stream(raw_stream):
                     full_response += chunk
                     token_count += 1
+
+                    if token_count % 25 == 0 and detect_text_repetition(full_response):
+                        console.print("\n[bold yellow]⚠ Tekrarlayan metin akışı tespit edildi, yanıt durduruluyor.[/bold yellow]")
+                        break
 
                     m = tool_marker_re.search(full_response)
                     if m:
@@ -606,39 +611,19 @@ class AgentLoop:
                             args_preview[k] = v
                     console.print(f"[dim]Parametreler: {json.dumps(args_preview, ensure_ascii=False, indent=2)}[/dim]")
                     
-                    # Repeat-detection & Cycle-detection guard
-                    # Catches both consecutive duplicates (A -> A) and multi-step cycles (A -> B -> C -> A -> B -> C)
-                    try:
-                        call_path = args.get("path", "")
-                        content_hash = hash(args.get("content", "")) if "content" in args else hash(json.dumps(args, sort_keys=True))
-                        call_sig = (tool_name, call_path, content_hash)
-                    except Exception:
-                        call_sig = (tool_name, str(args)[:200])
-
-                    past_occurrences = step_executed_calls.get(call_sig, 0)
-                    if past_occurrences >= 1:
-                        if past_occurrences == 1:
+                    # Repeat-detection & Cycle-detection guard (windowed + cycles + mutating reset)
+                    blocked, should_abort, block_reason = loop_guard.check(tool_name, args)
+                    if blocked:
+                        if should_abort:
                             console.print(
-                                f"[bold yellow]⚠ '{tool_name}' ({call_path or tool_name}) az önce zaten bu içerikle çalıştırıldı. Modele uyarı gönderiliyor...[/bold yellow]"
+                                "\n[bold yellow]⚠ Tekrarlayan araç döngüsü nedeniyle işlem durduruldu.[/bold yellow]\n"
                             )
-                            step_executed_calls[call_sig] = past_occurrences + 1
-                            all_results.append(
-                                f"UYARI: '{tool_name}' ({call_path or tool_name}) az önce zaten bu parametrelerle başarıyla çalıştırıldı ve sonucu verildi. "
-                                f"Aynı aracı tekrar tekrar çağırma! İşlem bittiyse kullanıcıya tamamlandığını bildir ve başka araç çağırma."
-                            )
-                            continue
-                        else:
-                            console.print(
-                                "\n[bold green]✓ Tüm işlemler tamamlandı (tekrarlayan araç çağrısı sonlandırıldı).[/bold green]\n"
-                            )
-                            self.history.add_message(
-                                "assistant",
-                                "İstenen tüm dosyalar ve işlemler başarıyla tamamlandı."
-                            )
+                            self.history.add_message("assistant", block_reason)
                             batch_aborted = True
                             break
-                    # NOTE: step_executed_calls is set AFTER successful execution (below)
-                    # Failed calls are NOT recorded so the model can retry with corrected params.
+                        console.print(f"[bold yellow]⚠ {block_reason}[/bold yellow]")
+                        all_results.append(block_reason)
+                        continue
 
                     # Batch write pseudo-tool from the parser's code-block fallback
                     if tool_name == "_write_multiple":
@@ -646,7 +631,7 @@ class AgentLoop:
                         step_count += 1
                         console.print("\n[bold green]✓ Dosyalar kaydedildi.[/bold green]\n")
                         all_results.append(f"'_write_multiple' → {len(args.get('files', []))} dosya kaydedildi.")
-                        step_executed_calls[call_sig] = 1
+                        loop_guard.record(tool_name, args, is_error=False)
                         continue
                     
                     tool = registry.get_tool(tool_name)
@@ -703,10 +688,7 @@ class AgentLoop:
                         summary = result[:300] + ("..." if len(result) > 300 else "")
                         console.print(f"[dim]Tool Sonucu:\n{summary}[/dim]")
                         all_results.append(f"'{tool_name}' → {result}")
-                        # Only record successful calls in repeat guard — failed calls
-                        # should be retryable with corrected parameters
-                        if not is_error:
-                            step_executed_calls[call_sig] = 1
+                        loop_guard.record(tool_name, args, is_error=is_error)
                         step_count += 1
                     else:
                         error_msg = f"Hata: '{tool_name}' adında bir araç bulunamadı."

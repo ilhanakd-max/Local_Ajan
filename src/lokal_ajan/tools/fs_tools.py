@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from .base import BaseTool
 from .registry import registry
 from lokal_ajan.safety.sandbox import get_safe_path
+from lokal_ajan.safety.guards import is_deleted_path, is_protected_path
 
 class ReadFileArgs(BaseModel):
     path: str = Field(..., description="Path to the file to read")
@@ -32,6 +33,28 @@ class ReadFileTool(BaseTool):
             if lower_path.endswith('.xlsx') or lower_path.endswith('.xls'):
                 return "Error: Cannot read Excel with 'read_file'. Please use the 'read_excel' tool instead."
 
+            # Dizin okuma yönlendirmesi (Read-Directory Redirect)
+            if os.path.isdir(path):
+                try:
+                    raw_limit = os.environ.get("LOCAI_READ_DIR_LIMIT", "200")
+                    limit = int(raw_limit) if raw_limit.isdigit() and int(raw_limit) >= 1 else 200
+                    entries = sorted(os.listdir(path), key=lambda s: s.lower())
+                    formatted = [
+                        f"{name}/" if os.path.isdir(os.path.join(path, name)) else name
+                        for name in entries
+                    ]
+                    shown = formatted[:limit]
+                    hidden = len(formatted) - len(shown)
+                    body = "(empty directory)" if not formatted else "\n".join(shown)
+                    if hidden > 0:
+                        body += f"\n... ({hidden} more entries not shown)"
+                    return (
+                        f"Note: '{path}' is a directory, not a file. Use 'list_dir' next time.\n"
+                        f"Directory contents:\n{body}"
+                    )
+                except Exception as dir_err:
+                    return f"Error: '{path}' is a directory, and listing it failed: {dir_err}. Use 'list_dir'."
+
             with open(path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
@@ -57,7 +80,7 @@ class WriteFileArgs(BaseModel):
 
 class WriteFileTool(BaseTool):
     name = "write_file"
-    description = "Creates a new file or overwrites an existing one"
+    description = "Creates a new file (does not overwrite existing files; use 'edit_file' for existing files)"
     args_schema = WriteFileArgs
     requires_confirm = True
     
@@ -74,6 +97,25 @@ class WriteFileTool(BaseTool):
                 return "Error: Cannot write PDF with 'write_file'. Please use the 'write_pdf' tool instead."
             if lower_path.endswith('.xlsx') or lower_path.endswith('.xls'):
                 return "Error: Cannot write Excel with 'write_file'. Please use the 'write_excel' tool instead."
+
+            protected = is_protected_path(path)
+            if protected:
+                return f"Error: write_file blocked: '{path}' is inside a protected directory ({protected})."
+
+            if is_deleted_path(path, self.workdir or "."):
+                return (
+                    f"Error: write_file blocked: '{path}' was deleted or moved via shell earlier in this session. "
+                    "Use 'edit_file' to modify existing files instead of deleting and rewriting."
+                )
+
+            if os.path.isdir(path):
+                return f"Error: write_file blocked: '{path}' is an existing directory."
+
+            if os.path.exists(path):
+                return (
+                    f"Error: write_file blocked: '{path}' already exists. "
+                    "Use 'edit_file' to modify existing files instead of overwriting them."
+                )
 
             os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
             with open(path, 'w', encoding='utf-8') as f:

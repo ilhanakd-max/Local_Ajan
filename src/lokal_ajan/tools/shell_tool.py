@@ -2,6 +2,7 @@ import subprocess
 from pydantic import BaseModel, Field
 from lokal_ajan.tools.base import BaseTool
 from lokal_ajan.tools.registry import registry
+from lokal_ajan.safety.guards import track_shell_deletions
 
 import platform
 
@@ -34,6 +35,8 @@ class RunShellTool(BaseTool):
             cleaned_cmd = "\n".join(cleaned_lines).strip()
             if not cleaned_cmd:
                 return "Command contained only comments and was skipped."
+
+            track_shell_deletions(cleaned_cmd, self.workdir)
 
             # Guard against interactive editors/pagers that hang non-interactive shells
             first_words = {w.lower() for w in cleaned_cmd.replace("|", " ").replace(";", " ").replace("&", " ").split()}
