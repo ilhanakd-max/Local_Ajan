@@ -586,6 +586,25 @@ class AgentLoop:
                 else:
                     console.print("[bold red]Model tekrar tekrar boş yanıt üretti, döngü durduruldu.[/bold red]")
                     break
+
+            # Detect malformed/unparsed tool-call tags so the agent retries instead of exiting mid-task
+            if not all_tool_calls and re.search(r"<tool_call|<\|tool_call_start\|>|<function[=\s]", full_response, re.IGNORECASE):
+                parse_fail_count += 1
+                step_count += 1
+                if parse_fail_count <= self.profile.parse_retry_limit:
+                    console.print(
+                        "[dim]Bozuk araç çağrısı algılandı, düzeltme isteği gönderiliyor "
+                        f"({parse_fail_count}/{self.profile.parse_retry_limit})...[/dim]"
+                    )
+                    self.history.add_message(
+                        "user",
+                        "Araç çağrın geçersiz biçimdeydi ve çalıştırılamadı. Lütfen geçerli bir JSON formatında "
+                        "<tool_call>{\"name\": \"tool_name\", \"arguments\": {...}}</tool_call> bloğu üret ve devam et.",
+                    )
+                    continue
+                else:
+                    console.print("[bold red]Model tekrar tekrar bozuk araç çağrısı üretti, döngü durduruldu.[/bold red]")
+                    break
             
             if all_tool_calls:
                 if len(all_tool_calls) > 1:

@@ -176,6 +176,18 @@ def test_completion_summary_not_extracted_as_tool_call():
     assert len(calls) == 0, f"Expected 0 calls from completion summary, got: {calls}"
 
 
+def test_malformed_xml_tool_call_with_trailing_gt_and_double_close():
+    text = """<tool_call>read_file>
+<path>
+/home/ilhan/Masaüstü/Aralık/Plan.md
+</path>
+</</tool_call>"""
+    calls = extract_all_tool_calls(text)
+    assert len(calls) == 1
+    assert calls[0][0] == "read_file"
+    assert calls[0][1]["path"] == "/home/ilhan/Masaüstü/Aralık/Plan.md"
+
+
 if __name__ == "__main__":
     test_normalize_broken_tags()
     test_cleanup_json_trailing_gt()

@@ -58,6 +58,13 @@ def _normalize_broken_tags(text: str) -> str:
         text,
         flags=re.IGNORECASE,
     )
+    # Fix doubled closing tags like </</tool_call> or </ </tool_call>
+    text = re.sub(
+        r'</\s*</\s*tool_call\s*>',
+        '</tool_call>',
+        text,
+        flags=re.IGNORECASE,
+    )
     return text
 
 
@@ -550,6 +557,23 @@ def _try_parse_xml_tool_call(text: str, valid_names: Optional[Set[str]] = None) 
             if tag_params:
                 args = {pname.strip(): pval.strip() for pname, pval in tag_params}
                 return tname, args
+
+    # Format 6: tool_name>\n<param>val</param> (malformed tag inside <tool_call>...</tool_call>)
+    # e.g. <tool_call>read_file>\n<path>/some/file</path>\n</</tool_call>
+    bare_tool = re.match(r'^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*>?\s*(<.+)', text, re.DOTALL)
+    if bare_tool:
+        tname = bare_tool.group(1).strip()
+        if not valid_names or tname in valid_names:
+            body = bare_tool.group(2)
+            tag_params = re.findall(r'<([a-zA-Z0-9_]+)>(.*?)</\1>', body, re.DOTALL)
+            if tag_params:
+                args = {
+                    pname.strip(): pval.strip()
+                    for pname, pval in tag_params
+                    if pname.lower() not in ('tool_call', 'arg_key', 'arg_value')
+                }
+                if args:
+                    return tname, args
 
     return None
 
