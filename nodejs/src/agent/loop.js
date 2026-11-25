@@ -1,0 +1,379 @@
+import { getProfileForModel } from "../llm/modelProfiles.js";
+import { chatStreamOllama } from "../llm/ollamaClient.js";
+import { chatStreamOpenAICompat, resolveProvider } from "../llm/openaiCompatClient.js";
+import { registry } from "../tools/index.js";
+import { confirmAction } from "../safety/confirm.js";
+import { RepetitionLoopGuard, detectTextRepetition } from "../safety/guards.js";
+import { ansi } from "../ui/ansi.js";
+import { ChatHistory } from "./history.js";
+import { prepareContext, truncateToolOutput } from "./context.js";
+import { extractAllToolCalls } from "./parser.js";
+import { getSystemPrompt } from "./prompt.js";
+import { filterThinkingStream, stripThinking } from "./thinking.js";
+
+const TOOL_MARKER_RE =
+  /(<\s*\/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<\s*f\s*u\s*n\s*c\s*t\s*i\s*o\s*n|<delegate_task|<write_file|<arg_key|```(?:json)?\s*\{|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task|report_finding|semantic_code_search)\()/i;
+
+const PARTIAL_TAG_RE =
+  /(<\s*\/?\s*t[a-zA-Z0-9_\s]*|<tool_?[a-zA-Z0-9_]*|<\|tool_?[a-zA-Z0-9_]*|<\s*\/?\s*f[a-zA-Z0-9_\s]*|\[(?:delegate|write|read|edit|list|glob|grep|git|run)[a-zA-Z0-9_]*)$/i;
+
+const MALFORMED_TAG_RE = /<tool_call|<\|tool_call_start\|>|<function[=\s]/i;
+
+function formatArgsPreview(args = {}) {
+  const preview = {};
+  for (const [k, v] of Object.entries(args)) {
+    if (typeof v === "string" && v.length > 140) {
+      preview[k] = `${v.slice(0, 140)}... (${v.length} krk)`;
+    } else if (Array.isArray(v) && v.length > 5) {
+      preview[k] = [...v.slice(0, 5), `... (${v.length} öğe)`];
+    } else {
+      preview[k] = v;
+    }
+  }
+  return JSON.stringify(preview);
+}
+
+export class AgentLoop {
+  constructor({
+    modelName,
+    host = "http://localhost:11434",
+    workdir = null,
+    autoConfirm = false,
+    maxSteps = 20,
+    config = {},
+    workerModel = null,
+    ponytailMode = false,
+    streamFn = null,
+    quiet = false,
+  }) {
+    this.modelName = modelName;
+    this.host = host;
+    this.workdir = workdir || process.cwd();
+    this.autoConfirm = autoConfirm;
+    this.maxSteps = maxSteps;
+    this.config = config;
+    this.workerModel = workerModel;
+    this.ponytailMode = ponytailMode;
+    this.streamFn = streamFn;
+    this.quiet = quiet;
+
+    registry.setWorkdir(this.workdir);
+    this.profile = getProfileForModel(modelName);
+    this.history = new ChatHistory(this._buildPrompt());
+  }
+
+  _buildPrompt() {
+    return getSystemPrompt({
+      promptLevel: this.profile.prompt_level,
+      orchestratorMode: Boolean(this.workerModel),
+      workerModel: this.workerModel,
+      ponytailMode: this.ponytailMode,
+    });
+  }
+
+  refreshPrompt() {
+    this.profile = getProfileForModel(this.modelName);
+    this.history.updateSystemPrompt(this._buildPrompt());
+  }
+
+  setModel(newModel) {
+    this.modelName = newModel;
+    this.refreshPrompt();
+  }
+
+  setPonytailMode(enabled) {
+    this.ponytailMode = Boolean(enabled);
+    this.refreshPrompt();
+  }
+
+  async *_streamModel(messages) {
+    if (this.streamFn) {
+      yield* this.streamFn({ model: this.modelName, messages, profile: this.profile });
+      return;
+    }
+
+    if (resolveProvider(this.modelName, this.config)) {
+      yield* chatStreamOpenAICompat({
+        model: this.modelName,
+        messages,
+        config: this.config,
+        temperature: this.profile.temperature,
+      });
+      return;
+    }
+
+    const thinkOpt = this.profile.supports_think_control ? !this.profile.disable_thinking : null;
+    yield* chatStreamOllama({
+      model: this.modelName,
+      messages,
+      host: this.host,
+      numCtx: this.profile.num_ctx,
+      temperature: this.profile.temperature,
+      repeatPenalty: this.profile.repeat_penalty,
+      think: thinkOpt,
+    });
+  }
+
+  async _delegateTask({ task_description, context_files = [] }) {
+    if (!this.workerModel) {
+      return "Error: Worker model is not configured.";
+    }
+    const worker = new AgentLoop({
+      modelName: this.workerModel,
+      host: this.host,
+      workdir: this.workdir,
+      autoConfirm: this.autoConfirm,
+      maxSteps: 12,
+      config: this.config,
+      ponytailMode: this.ponytailMode,
+      streamFn: this.streamFn,
+      quiet: true,
+    });
+    const ctxNote = context_files.length ? `\nRelevant files: ${context_files.join(", ")}` : "";
+    return worker.runTurn(`${task_description}${ctxNote}`);
+  }
+
+  async runTurn(userInput) {
+    this.history.addUser(userInput);
+    if (this.history.getMessages().length > 40 && !this._historyWarned && !this.quiet) {
+      console.log(ansi.dim("💡 İpucu: Oturum geçmişi uzadı. Belleği tazelemek için '/save <ad>' ardından '/clear' yapabilirsiniz."));
+      this._historyWarned = true;
+    }
+
+    const loopGuard = new RepetitionLoopGuard();
+    const extraNames = this.workerModel ? new Set(["delegate_task"]) : null;
+    const retryLimit = this.profile.parse_retry_limit ?? 2;
+    let parseFailCount = 0;
+    let finalResponse = "";
+
+    for (let step = 0; step < this.maxSteps; step++) {
+      const prepared = prepareContext(this.history.getMessages(), this.profile.num_ctx);
+      let rawOutput = "";
+      let printedLen = 0;
+      let tokenCount = 0;
+      let inToolMode = false;
+      let spinnerActive = false;
+      let repetitionAborted = false;
+      const isTTY = Boolean(process.stdout.isTTY);
+      const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+      if (!this.quiet) {
+        process.stdout.write(`\n${ansi.boldCyan("◆ LocAi")} ${ansi.gray("·")} ${ansi.dim(this.modelName)}\n`);
+      }
+
+      for await (const chunk of filterThinkingStream(this._streamModel(prepared))) {
+        rawOutput += chunk;
+        tokenCount++;
+
+        if (tokenCount % 25 === 0 && detectTextRepetition(rawOutput)) {
+          repetitionAborted = true;
+          break;
+        }
+
+        if (this.quiet) continue;
+
+        const marker = TOOL_MARKER_RE.exec(rawOutput);
+        if (marker) {
+          const cutIndex = marker.index;
+          if (printedLen < cutIndex) {
+            const pending = rawOutput.slice(printedLen, cutIndex);
+            if (pending) {
+              if (spinnerActive) {
+                if (isTTY) process.stdout.write("\r\x1b[K");
+                else process.stdout.write("\n");
+                spinnerActive = false;
+              }
+              process.stdout.write(pending);
+              printedLen = cutIndex;
+            }
+          }
+          if (!inToolMode) {
+            inToolMode = true;
+            if (printedLen > 0 && !rawOutput.slice(0, printedLen).endsWith("\n")) {
+              process.stdout.write("\n");
+            }
+          }
+          const sp = spinnerChars[tokenCount % spinnerChars.length];
+          if (isTTY) {
+            process.stdout.write(`\r\x1b[K  ${sp} ${ansi.boldCyan(`⚡ Kod / Araç çağrısı üretiliyor (${tokenCount} parça)...`)}`);
+            spinnerActive = true;
+          } else if (!spinnerActive || tokenCount % 30 === 0) {
+            console.log(`  ${sp} ${ansi.boldCyan(`⚡ Kod / Araç çağrısı üretiliyor (${tokenCount} parça)...`)}`);
+            spinnerActive = true;
+          }
+        } else {
+          const tail = rawOutput.slice(printedLen);
+          const partial = PARTIAL_TAG_RE.exec(tail);
+          if (partial && tail.length - partial.index < 35) {
+            const safeLen = printedLen + partial.index;
+            if (safeLen > printedLen) {
+              if (spinnerActive) {
+                if (isTTY) process.stdout.write("\r\x1b[K");
+                else process.stdout.write("\n");
+                spinnerActive = false;
+              }
+              process.stdout.write(rawOutput.slice(printedLen, safeLen));
+              printedLen = safeLen;
+            }
+          } else if (tail) {
+            if (spinnerActive) {
+              if (isTTY) process.stdout.write("\r\x1b[K");
+              else process.stdout.write("\n");
+              spinnerActive = false;
+            }
+            process.stdout.write(tail);
+            printedLen = rawOutput.length;
+          }
+        }
+      }
+
+      if (!this.quiet) {
+        if (spinnerActive) {
+          if (isTTY) process.stdout.write("\r\x1b[K\n");
+          else process.stdout.write("\n");
+        } else if (printedLen > 0 && !rawOutput.slice(0, printedLen).endsWith("\n")) {
+          process.stdout.write("\n");
+        } else if (printedLen === 0) {
+          process.stdout.write("\n");
+        }
+      }
+
+      const cleaned = stripThinking(rawOutput);
+      this.history.addAssistant(cleaned);
+
+      if (repetitionAborted) {
+        const msg = "[Döngü Koruması: Model aynı metni tekrarlamaya başladığı için yanıt durduruldu.]";
+        if (!this.quiet) console.log(ansi.yellow(msg));
+        return cleaned || msg;
+      }
+
+      const calls = extractAllToolCalls(cleaned, extraNames);
+
+      // Flush unprinted normal text if no tool calls were detected
+      if (!this.quiet && !calls.length && cleaned.trim() && printedLen < rawOutput.length) {
+        const rest = rawOutput.slice(printedLen);
+        if (rest.trim()) console.log(rest);
+      }
+
+      // Small-model recovery 1: Empty / think-only output
+      if (!calls.length && !cleaned.trim()) {
+        parseFailCount++;
+        if (parseFailCount <= retryLimit) {
+          if (!this.quiet) {
+            console.log(ansi.dim(`Yanıt boş geldi, düzeltme isteği gönderiliyor (${parseFailCount}/${retryLimit})...`));
+          }
+          this.history.addUser(
+            "Yanıtın boş geldi. Ya bir <tool_call> bloğu üret ya da kullanıcıya kısa, normal bir cevap yaz. Başka bir şey yazma."
+          );
+          continue;
+        }
+        if (!this.quiet) console.log(ansi.red("Model tekrar tekrar boş yanıt üretti, döngü durduruldu."));
+        break;
+      }
+
+      // Small-model recovery 2: Empty LFM tool tags
+      const withoutEmptyLfm = cleaned.replace(/<\|tool_call_start\|>\s*<\|tool_call_end\|>/g, "").trim();
+      if (!calls.length && !withoutEmptyLfm) {
+        parseFailCount++;
+        if (parseFailCount <= retryLimit) {
+          if (!this.quiet) {
+            console.log(ansi.dim(`Model boş tool etiketi üretti, düzeltme gönderiliyor (${parseFailCount}/${retryLimit})...`));
+          }
+          this.history.addUser(
+            "You produced empty tool call tags with no content. Either produce a valid <tool_call> block with a tool name and arguments, or write a short answer to the user."
+          );
+          continue;
+        }
+        if (!this.quiet) console.log(ansi.red("Model tekrar tekrar boş tool etiketi üretti, döngü durduruldu."));
+        break;
+      }
+
+      // Small-model recovery 3: Malformed / unparsed tool call tags
+      if (!calls.length && MALFORMED_TAG_RE.test(cleaned)) {
+        parseFailCount++;
+        if (parseFailCount <= retryLimit) {
+          if (!this.quiet) {
+            console.log(ansi.dim(`Bozuk araç çağrısı algılandı, düzeltme gönderiliyor (${parseFailCount}/${retryLimit})...`));
+          }
+          this.history.addUser(
+            'Araç çağrın geçersiz biçimdeydi ve çalıştırılamadı. Lütfen geçerli bir JSON formatında <tool_call>{"name": "tool_name", "arguments": {...}}</tool_call> bloğu üret ve devam et.'
+          );
+          continue;
+        }
+        if (!this.quiet) console.log(ansi.red("Model tekrar tekrar bozuk araç çağrısı üretti, döngü durduruldu."));
+        break;
+      }
+
+      if (!calls.length) {
+        finalResponse = cleaned;
+        break;
+      }
+
+      parseFailCount = 0;
+
+      for (const call of calls) {
+        if (!this.quiet) {
+          console.log(`  ${ansi.gray("├─")} ${ansi.boldMagenta("⚙ " + call.name)} ${ansi.dim(formatArgsPreview(call.args))}`);
+        }
+
+        const guardRes = loopGuard.recordAndCheck(call.name, call.args);
+        if (guardRes.blocked) {
+          const warn = `Loop guard blocked '${call.name}': ${guardRes.reason}. Change approach or answer directly.`;
+          this.history.addToolResult(call.name, warn);
+          if (!this.quiet) console.log(ansi.yellow(`⚠ ${warn}`));
+          if (guardRes.shouldAbort) {
+            return `Stopped after repeated tool-call loop: ${guardRes.reason}`;
+          }
+          continue;
+        }
+
+        if (call.name === "delegate_task") {
+          const workerOut = await this._delegateTask(call.args || {});
+          const truncated = truncateToolOutput(workerOut, this.profile.max_tool_output);
+          this.history.addToolResult("delegate_task", truncated);
+          continue;
+        }
+
+        const tool = registry.get(call.name);
+        if (!tool) {
+          this.history.addToolResult(call.name, `Error: Unknown tool '${call.name}'.`);
+          continue;
+        }
+
+        const needsConfirm =
+          tool.requiresConfirm &&
+          (this.config.require_confirm_for || ["write_file", "edit_file", "run_shell"]).includes(tool.name);
+
+        if (needsConfirm) {
+          const ok = await confirmAction(`'${tool.name}' çalıştırılsın mı?`, this.autoConfirm);
+          if (!ok) {
+            this.history.addToolResult(tool.name, "User declined tool execution.");
+            if (!this.quiet) console.log(ansi.dim("  (Kullanıcı tarafından reddedildi)"));
+            continue;
+          }
+        }
+
+        let result;
+        try {
+          result = await tool.run(call.args || {});
+        } catch (err) {
+          result = `Error executing '${tool.name}': ${err.message}`;
+        }
+
+        const truncated = truncateToolOutput(String(result ?? ""), this.profile.max_tool_output);
+        this.history.addToolResult(
+          tool.name,
+          `${truncated}\n(Kalan başka işlem yoksa görevi bitir; kodu tekrar yazma, 1 kısa cümleyle ne yapıldığını söyle ve dur.)`
+        );
+        if (!this.quiet) {
+          const preview = truncated.split("\n")[0].slice(0, 120);
+          const isErr = /^(Error|Hata)/i.test(preview);
+          const badge = isErr ? ansi.red("✗") : ansi.green("✓");
+          console.log(`  ${ansi.gray("└─")} ${badge} ${ansi.dim(preview)}`);
+        }
+      }
+    }
+
+    return finalResponse;
+  }
+}

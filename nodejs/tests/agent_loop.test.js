@@ -1,0 +1,38 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+import { AgentLoop } from "../src/agent/loop.js";
+
+test("AgentLoop executes tool calls from mocked stream and returns final answer", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "locai-loop-"));
+  let turn = 0;
+  try {
+    const mockStream = async function* () {
+      turn += 1;
+      if (turn === 1) {
+        yield '<think>planning</think><tool_call>{"name":"write_file","arguments":{"path":"hello.txt","content":"merhaba"}}</tool_call>';
+      } else if (turn === 2) {
+        yield '<tool_call>{"name":"read_file","arguments":{"path":"hello.txt"}}</tool_call>';
+      } else {
+        yield "Dosya oluşturuldu ve içeriği 'merhaba' olarak doğrulandı.";
+      }
+    };
+
+    const agent = new AgentLoop({
+      modelName: "qwen3:1.7b",
+      workdir: tmp,
+      autoConfirm: true,
+      quiet: true,
+      streamFn: mockStream,
+    });
+
+    const out = await agent.runTurn("hello.txt oluştur ve doğrula");
+    assert.match(out, /merhaba/);
+    assert.equal(fs.readFileSync(path.join(tmp, "hello.txt"), "utf8"), "merhaba");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
