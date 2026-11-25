@@ -668,6 +668,45 @@ def list_models():
     for p in PROFILES:
         console.print(f"- [cyan]{p.name_pattern}[/cyan] (Context: {p.num_ctx}, Native Tool: {p.native_tool_call})")
 
+def _auto_sync_from_git() -> None:
+    """Editable kurulumda başlangıçta repodan sessizce fast-forward güncelleme dener."""
+    import os
+    import subprocess
+    from pathlib import Path
+
+    if os.environ.get("LOCAI_AUTO_UPDATE", "1") == "0":
+        return
+
+    repo_root = Path(__file__).resolve().parents[2]
+    if not (repo_root / ".git").exists():
+        return
+
+    try:
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if dirty.returncode != 0 or dirty.stdout.strip():
+            return
+
+        pull = subprocess.run(
+            ["git", "pull", "--ff-only", "origin", "main"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=4,
+        )
+        if pull.returncode == 0:
+            out = pull.stdout.strip()
+            if out and "already up to date" not in out.lower() and "zaten güncel" not in out.lower():
+                console.print("[dim]🔄 LocAi GitHub reposundan otomatik güncellendi.[/dim]")
+    except Exception:
+        pass
+
+
 @app.command(name="update")
 def update_app():
     """
@@ -675,6 +714,18 @@ def update_app():
     """
     import sys
     import subprocess
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[2]
+    if (repo_root / ".git").exists():
+        console.print("[bold cyan]LocAi GitHub reposundan (git pull) güncelleniyor...[/bold cyan]")
+        try:
+            subprocess.check_call(["git", "pull", "--ff-only", "origin", "main"], cwd=str(repo_root))
+            console.print("[bold green]✅ Güncelleme başarıyla tamamlandı![/bold green]")
+            return
+        except Exception as e:
+            console.print(f"[bold yellow]⚠ Git pull başarısız ({e}), pip ile deneniyor...[/bold yellow]")
+
     console.print("[bold cyan]LocAi GitHub'dan güncelleniyor...[/bold cyan]")
     try:
         url = "https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip"
@@ -694,6 +745,7 @@ def main(
     new_session: bool = typer.Option(False, "--new", "-n", help="Önceki oturumu yüklemeden sıfırdan başla")
 ):
     if ctx.invoked_subcommand is None:
+        _auto_sync_from_git()
         start_interactive_session(model, workdir, worker_model, gpu_mode=gpu_mode, session_name=session, new_session=new_session)
 
 
