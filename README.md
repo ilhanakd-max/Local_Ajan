@@ -42,6 +42,11 @@
 
 ### 🚀 Hızlı Kurulum ve Kullanım
 
+> **Ön Koşul:** Sisteminizde **Node.js 22+** kurulu olmalıdır (`node -v` ile kontrol edin). Kurulu değilse:
+> - **Linux:** `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && nvm install 22`
+> - **macOS:** `brew install node@22`
+> - **Windows:** `winget install OpenJS.NodeJS.LTS` (veya [nodejs.org](https://nodejs.org/))
+
 ```bash
 # 1. Repoyu klonla ve global CLI olarak bağla
 git clone https://github.com/ilhanakd-max/Local_Ajan.git
@@ -83,6 +88,8 @@ locai
 LocAi is a **zero-dependency Node.js (ESM)** local AI coding agent engineered specifically to make small local LLMs (`0.6B–4B`) reliable on real codebases.
 
 ### ⚡ Quick Start
+
+> **Prerequisite:** Make sure **Node.js 22+** is installed (`node -v`). If not: Linux (`nvm install 22`), macOS (`brew install node@22`), Windows (`winget install OpenJS.NodeJS.LTS` or [nodejs.org](https://nodejs.org/)).
 
 ```bash
 git clone https://github.com/ilhanakd-max/Local_Ajan.git

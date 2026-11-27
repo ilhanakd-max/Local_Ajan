@@ -203,8 +203,13 @@
 
     <section id="kurulum">
       <h2>Nasıl Kurulur?</h2>
-      <p class="section-desc">Gereksinimler: <strong>Node.js 22+</strong> ve yerel modeller için <strong>Ollama</strong> (PDF okuma için isteğe bağlı <code>poppler-utils</code>).</p>
-      <pre><span class="code-comment"># 1. Repoyu klonla ve global CLI olarak bağla</span>
+      <p class="section-desc">Önce sisteminizde <strong>Node.js 22+</strong> kurulu olmalıdır (<code>node -v</code>). Yoksa aşağıdaki adımla kurup devam edebilirsiniz.</p>
+      <pre><span class="code-comment"># 0. Sisteminizde Node.js 22+ yoksa önce kurun:</span>
+<span class="code-comment">#    Linux:   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && nvm install 22</span>
+<span class="code-comment">#    macOS:   brew install node@22</span>
+<span class="code-comment">#    Windows: winget install OpenJS.NodeJS.LTS  (veya nodejs.org)</span>
+
+<span class="code-comment"># 1. Repoyu klonla ve global CLI olarak bağla</span>
 git clone https://github.com/ilhanakd-max/Local_Ajan.git
 cd Local_Ajan
 npm link

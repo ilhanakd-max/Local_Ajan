@@ -20,6 +20,28 @@
 
 ## 🚀 Kurulum / Installation
 
+### 0. Node.js 22+ Kurulumu (Sisteminizde Yoksa)
+
+Önce terminalde `node -v` çalıştırarak Node.js sürümünüzü kontrol edin. Kurulu değilse veya sürüm `v22` altındaysa işletim sisteminize göre kurun:
+
+- **🐧 Linux (Ubuntu / Debian) — `nvm` ile (Önerilen):**
+  ```bash
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+  source ~/.bashrc   # zsh kullanıyorsanız: source ~/.zshrc
+  nvm install 22
+  node -v            # v22.x.x görünmeli
+  ```
+- **🍎 macOS — Homebrew ile:**
+  ```bash
+  brew install node@22
+  node -v
+  ```
+- **🪟 Windows — `winget` veya resmi yükleyici ile:**
+  ```powershell
+  winget install OpenJS.NodeJS.LTS
+  ```
+  *(Alternatif olarak [nodejs.org](https://nodejs.org/) üzerinden **Node.js 22+ LTS** kurulum dosyasını indirip kurabilirsiniz.)*
+
 ### 1. Repoyu Klonla ve Global Olarak Bağla (`npm link`)
 
 ```bash
