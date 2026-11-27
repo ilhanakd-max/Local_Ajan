@@ -1,232 +1,96 @@
-# 📦 LocAi Installation Guide
+# 📦 LocAi Kurulum Kılavuzu / Installation Guide (Node.js v0.4.0-js)
 
-Comprehensive installation instructions for **LocAi** across Windows, macOS, and Linux.
+**LocAi**, sıfır harici npm bağımlılığına sahip saf **Node.js (ESM)** tabanlı yerel AI kodlama ajanıdır. Windows, macOS ve Linux üzerinde çalışır.
 
----
-
-## 📋 Table of Contents
-- [Prerequisites](#prerequisites)
-- [🪟 Windows Installation](#-windows-installation)
-- [🍎 macOS Installation](#-macos-installation)
-- [🐧 Linux Installation (Ubuntu/Debian)](#-linux-installation-ubuntudebian)
-- [📋 Supported & Recommended Models](#-supported--recommended-models)
-- [💾 Configuration](#-configuration)
-- [🔧 Troubleshooting](#-troubleshooting)
-- [🚀 Next Steps](#-next-steps)
+![LocAi Setup Flow](assets/nodejs_setup_flow.png)
 
 ---
 
-## Prerequisites
+## 📋 Gereksinimler / Prerequisites
 
-Before installing LocAi, ensure you have:
-1. **Python 3.11+** installed (`python --version` or `python3 --version`)
-2. **Ollama** installed and running for local model inference: [Download Ollama](https://ollama.ai/)
-3. **pipx** (recommended for isolated CLI tools) or standard `pip`
+1. **Node.js 22+** (`node -v` ile doğrulayın) — [nodejs.org](https://nodejs.org/)
+2. **Ollama** (yerel modeller için) — [ollama.ai](https://ollama.ai/)
+   - İsteğe bağlı bulut sağlayıcılar: **OpenRouter**, **Groq**, **NVIDIA NIM**, **NineRouter**
+3. *(İsteğe bağlı)* **poppler-utils** (`pdftotext`): `read_file` aracının `.pdf` dosyalarını doğrudan okuyabilmesi için:
+   - Ubuntu/Debian: `sudo apt install poppler-utils`
+   - macOS: `brew install poppler`
+   - Windows: `winget install oschwartz10612.Poppler`
 
 ---
 
-## 🪟 Windows Installation
+## 🚀 Kurulum / Installation
 
-### Step 1: Install Python & pipx
-Ensure Python 3.11+ is installed (check "Add python.exe to PATH" during installation).
+### 1. Repoyu Klonla ve Global Olarak Bağla (`npm link`)
 
-Open PowerShell as Administrator or standard user:
-```powershell
-# Verify Python version
-python --version
-
-# Install pipx
-python -m pip install --user pipx
-python -m pipx ensurepath
-```
-*Note: Restart PowerShell or Windows Terminal after running `ensurepath`.*
-
-### Step 2: Install and Start Ollama
-1. Download installer from [ollama.ai](https://ollama.ai/).
-2. Run the installer (Ollama starts as a Windows background service automatically).
-3. Verify in PowerShell:
-```powershell
-ollama --version
+```bash
+git clone https://github.com/ilhanakd-max/Local_Ajan.git
+cd Local_Ajan
+npm link
 ```
 
-### Step 3: Download a Recommended Model
-```powershell
+Bu işlemden sonra terminalin herhangi bir yerinden şu komutların üçü de çalışır:
+- `locai`
+- `lokal-ajan`
+- `localajan`
+
+Alternatif olarak `npm install -g .` ile de global kurulum yapabilirsiniz.
+
+### 2. Yerel Model İndir (Ollama)
+
+```bash
+# Önerilen hafif yerel modeller
 ollama pull qwen3:1.7b
-```
+ollama pull hf.co/unsloth/Qwen3-4B-Instruct-2507-GGUF:Q4_K_M
 
-### Step 4: Install LocAi
-```powershell
-pipx install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip
-```
-
-*Alternative via standard pip:*
-```powershell
-pip install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip
-```
-
-### Step 5: Start LocAi
-```powershell
-locai --model qwen3:1.7b --workdir D:\Projects\MyProject
-```
-
----
-
-## 🍎 macOS Installation
-
-### Step 1: Install Python & pipx
-Using [Homebrew](https://brew.sh/):
-```bash
-# Install Python 3.11+
-brew install python@3.11
-
-# Install pipx
-brew install pipx
-pipx ensurepath
-
-# Refresh shell environment
-source ~/.zprofile   # or ~/.bash_profile
-```
-
-### Step 2: Install Ollama
-```bash
-brew install --cask ollama
-# Or download directly from https://ollama.ai/
-```
-Launch Ollama from your Applications folder.
-
-### Step 3: Download a Model
-```bash
-ollama pull qwen3:1.7b
-```
-
-### Step 4: Install LocAi
-```bash
-pipx install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip
-```
-
-### Step 5: Start LocAi
-```bash
-locai --model qwen3:1.7b --workdir ~/projects/myapp
-```
-
----
-
-## 🐧 Linux Installation (Ubuntu/Debian)
-
-### Step 1: Install Python & pipx
-```bash
-# Update repositories
-sudo apt update
-
-# Install Python 3.11+, venv, and pip
-sudo apt install -y python3 python3-venv python3-pip pipx
-
-# Ensure pipx path is configured
-pipx ensurepath
-source ~/.bashrc
-```
-
-### Step 2: Install Ollama
-```bash
-curl -fsSL https://ollama.ai/install.sh | sh
-```
-Start or verify Ollama service:
-```bash
-systemctl status ollama
-# Or run manually in a terminal if not installed as service:
+# Ollama sunucusunun çalıştığından emin olun
 ollama serve
 ```
 
-### Step 3: Download a Model
-```bash
-ollama pull qwen3:1.7b
-```
+### 3. Başlat / Run
 
-### Step 4: Install LocAi
 ```bash
-pipx install https://github.com/ilhanakd-max/Local_Ajan/archive/refs/heads/main.zip
-```
-
-### Step 5: Start LocAi
-```bash
-locai --model qwen3:1.7b --workdir ~/projects/myapp
+# Proje klasörüne gidin ve başlatın
+cd /proje/klasorunuz
+locai
 ```
 
 ---
 
-## 📋 Supported & Recommended Models
+## ⚙️ CLI Parametreleri / Options
 
-LocAi is specially engineered and optimized for small and medium local models:
-
-| Model | Parameter Size | Recommendation | Profile & Characteristics |
-| :--- | :--- | :--- | :--- |
-| **qwen3:0.6b** | ~400MB | ✅ Ultra Lightweight | Fastest, minimal RAM, ideal for rapid exploration |
-| **qwen3:1.7b** | ~1.1GB | ⭐ **Recommended** | Perfect balance of low latency, agent reasoning & accuracy |
-| **qwen3:4b** | ~2.6GB | ⭐ **Recommended** | Enhanced multi-step reasoning, highly capable |
-| **qwen3:8b** | ~5.2GB | ⚠️ Moderate | Great for deep code analysis; requires 8GB+ RAM |
-| **qwen3:14b / 32b** | 9GB - 20GB | 🚀 High Performance | Enterprise/desktop workstation grade |
-| **llama3 / deepseek-r1** | Variable | ✅ Supported | Multi-provider and standard Ollama compatibility |
-
----
-
-## 💾 Configuration
-
-LocAi stores user preferences under `~/.lokal_ajan/` or system config path.
-
-Example configuration (`~/.lokal_ajan/config.json` or command flags):
-```json
-{
-  "default_model": "qwen3:1.7b",
-  "ollama_host": "http://127.0.0.1:11434",
-  "max_steps": 25,
-  "shell_timeout": 30
-}
-```
-
-You can view or update settings directly inside the interactive CLI:
-```text
-/model        - Switch model or provider
-/profile      - View active model profile & optimizations
-/session save - Save current session
-/help         - List all commands
-```
+| Seçenek | Açıklama |
+|---|---|
+| `-m, --model <ad>` | Kullanılacak model (örn. `qwen3:1.7b`, `openrouter/free`, `groq/...`) |
+| `-w, --worker <ad>` | Orkestratör modu için alt-işçi (worker) modeli |
+| `--host <url>` | Ollama adresi (varsayılan: `http://localhost:11434`) |
+| `--workdir <dizin>` | Çalışma dizini (varsayılan: mevcut dizin) |
+| `-p, --prompt <metin>` | Tek seferlik görev çalıştır ve çık |
+| `-y, --auto-confirm` | Dosya yazma/düzenleme ve shell komutlarını otomatik onayla (**varsayılan: açık**) |
+| `--no-auto-confirm` | Her yazma/shell işlemi öncesi kullanıcı onayı iste |
+| `--ponytail` | Minimalist kodlama modu (sıfır aşırı mühendislik) |
+| `--session <ad>` | Kayıtlı oturumu yükle |
+| `-v, --version` | Sürüm bilgisini göster (`LocAi (Node.js) v0.4.0-js`) |
+| `-h, --help` | Yardım mesajını göster |
 
 ---
 
-## 🔧 Troubleshooting
+## 💬 Etkileşimli REPL Komutları & Kısayollar
 
-### Issue: `locai` or `pipx` command not found
-**Solution:** Ensure the local bin folder is in your `$PATH`:
+- **`Ctrl+P`**: Etkileşimli ok tuşlu model seçiciyi açar
+- **OpenCode Tarzı Yapıştırma**: Çok satırlı veya uzun metin yapıştırıldığında otomatik olarak `[Pasted #1 ~N lines]` pill'ine dönüşür; `Enter` ile gönderildiğinde tam metne açılır
+- **Dosya Sürükle-Bırak**: Terminale bir dosya yolu bıraktığınızda (örn. `'/yol/Plan.md'`) dosya içeriği otomatik olarak mesaja eklenir
+- `/help`: Tüm komutları listeler
+- `/model [ad]`: Model seçiciyi açar veya model değiştirir
+- `/log [clear]`: Küçük modeller için tutulan çalışma günlüğünü (`.locai/worklog.jsonl`) gösterir veya temizler
+- `/ponytail`: Minimalist kodlama modunu açar/kapatır
+- `/save <ad>` / `/load <ad>` / `/sessions`: Oturumları kaydeder, yükler veya listeler
+- `/clear` / `/history`: Sohbet geçmişini temizler veya özetler
+- `/exit` (veya `/quit`): Uygulamayı temiz şekilde kapatır
+
+---
+
+## 🔧 Testleri Çalıştırma / Running Tests
+
 ```bash
-# Linux/macOS
-export PATH="$HOME/.local/bin:$PATH"
-source ~/.bashrc # or ~/.zshrc
-
-# Windows
-python -m pipx ensurepath
+npm test
 ```
-
-### Issue: Ollama connection refused (`Failed to connect to 127.0.0.1:11434`)
-**Solution:**
-1. Check if Ollama is running:
-   ```bash
-   curl http://127.0.0.1:11434/api/tags
-   ```
-2. Start Ollama:
-   - **Linux / macOS:** Run `ollama serve` or check `systemctl status ollama`.
-   - **Windows:** Search for "Ollama" in the Start Menu and launch the application.
-
-### Issue: Model pull is slow or interrupted
-**Solution:**
-```bash
-ollama pull -v qwen3:1.7b
-```
-
----
-
-## 🚀 Next Steps
-
-- Explore usage examples in [README.md](README.md)
-- Learn how to contribute in [CONTRIBUTING.md](CONTRIBUTING.md)
-- Report issues on [GitHub Issues](https://github.com/ilhanakd-max/Local_Ajan/issues)
-- Join discussions on [GitHub Discussions](https://github.com/ilhanakd-max/Local_Ajan/discussions)

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocAi v0.4.0-js — Küçük Modeller. Gerçek Ajanlar.</title>
+  <meta name="description" content="Sıfır bağımlılıklı Node.js yerel AI kodlama ajanı. Ollama, Qwen3, OpenRouter ve Groq destekli, OpenCode tarzı yapıştırma ve WorkLog hafızalı CLI." />
+  <link rel="icon" type="image/png" href="assets/locai-icon.png" />
+  <style>
+    :root {
+      --bg: #070b14;
+      --surface: #0e1525;
+      --surface-2: #141e33;
+      --border: #1e2d4a;
+      --text: #e6edf7;
+      --muted: #93a4c3;
+      --cyan: #38bdf8;
+      --emerald: #34d399;
+      --amber: #fbbf24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at top center, #0f1c36 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      background: rgba(7, 11, 20, 0.85);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.1rem; color: var(--text); }
+    .brand img { width: 32px; height: 32px; border-radius: 8px; }
+    .nav-links { display: flex; gap: 22px; font-size: 0.95rem; }
+    .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    .hero { padding: 72px 0 48px; text-align: center; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--cyan);
+      padding: 6px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: clamp(2.1rem, 4.5vw, 3.4rem);
+      line-height: 1.15;
+      margin-bottom: 18px;
+      background: linear-gradient(90deg, #ffffff 0%, var(--cyan) 60%, var(--emerald) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      max-width: 720px; margin: 0 auto 30px; color: var(--muted); font-size: 1.12rem;
+    }
+    .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 42px; }
+    .btn {
+      padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 0.96rem;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); border-color: var(--cyan); text-decoration: none; }
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #059669);
+      border-color: transparent; color: #fff;
+    }
+    .hero-img {
+      width: 100%; max-width: 940px; border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+    }
+
+    section { padding: 56px 0; }
+    h2 { font-size: 1.85rem; margin-bottom: 12px; }
+    .section-desc { color: var(--muted); margin-bottom: 28px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+    }
+    .card h3 { font-size: 1.08rem; margin-bottom: 8px; color: var(--cyan); }
+    .card p { color: var(--muted); font-size: 0.94rem; }
+
+    pre {
+      background: #050811;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", "Fira Code", monospace;
+      font-size: 0.9rem;
+      color: #d7e3f4;
+    }
+    .code-comment { color: #6b7d9e; }
+
+    .flow-img {
+      width: 100%; border-radius: 14px; border: 1px solid var(--border);
+      margin-top: 18px;
+    }
+
+    table {
+      width: 100%; border-collapse: collapse;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    }
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.94rem; }
+    th { background: var(--surface-2); color: var(--cyan); }
+    code {
+      font-family: "JetBrains Mono", "Fira Code", monospace;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--cyan);
+      padding: 2px 6px; border-radius: 6px; font-size: 0.88em;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0; text-align: center; color: var(--muted); font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand">
+        <img src="assets/locai-icon.png" alt="LocAi" />
+        <span>LocAi <span style="color:var(--cyan);font-size:0.85rem;">v0.4.0-js</span></span>
+      </div>
+      <nav class="nav-links">
+        <a href="#ozellikler">Özellikler</a>
+        <a href="#kurulum">Kurulum</a>
+        <a href="#kullanim">Kullanım</a>
+        <a href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="badge">⚡ Saf Node.js 22+ ESM • Sıfır Harici Bağımlılık</div>
+      <h1>Küçük Yerel Modeller.<br />Gerçek Kodlama Ajanları.</h1>
+      <p class="subtitle">
+        LocAi v0.4.0-js; Ollama, OpenRouter, Groq ve NVIDIA NIM modelleriyle çalışan,
+        OpenCode tarzı yapıştırma, otomatik dosya ekleme, PDF okuma ve WorkLog hafızasına sahip
+        hafif yerel AI terminal ajanıdır.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#kurulum">Hemen Kur (30 sn)</a>
+        <a class="btn" href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener">GitHub Reposu</a>
+      </div>
+      <img class="hero-img" src="assets/nodejs_cli_preview.png" alt="LocAi Node.js CLI Arayüzü" />
+    </section>
+
+    <section id="ozellikler">
+      <h2>Öne Çıkan Özellikler</h2>
+      <p class="section-desc">Küçük modellerin (0.6B–4B) gerçek projelerde hata yapmadan çalışması için tasarlandı.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>📋 OpenCode Tarzı Yapıştırma</h3>
+          <p>Çok satırlı metinleri terminale yapıştırdığınızda erken gönderim yapmaz; <code>[Pasted #1 ~N lines]</code> pill'i olarak gösterir ve Enter'da tam metne açar.</p>
+        </div>
+        <div class="card">
+          <h3>🧠 Kalıcı Çalışma Günlüğü (WorkLog)</h3>
+          <p>Her görev ve araç adımını proje klasöründeki <code>.locai/worklog.jsonl</code> dosyasına kaydeder; bağlam kırpıldığında otomatik hatırlatır.</p>
+        </div>
+        <div class="card">
+          <h3>📎 Sürükle-Bırak & PDF Desteği</h3>
+          <p>Terminale bıraktığınız dosya yollarını otomatik okuyup bağlama ekler. <code>.pdf</code> dosyaları <code>pdftotext</code> ile doğrudan metne çevrilir.</p>
+        </div>
+        <div class="card">
+          <h3>🛠️ Araç Onarımı & Güvenlik</h3>
+          <p>Bozuk XML/JSON araç çağrılarını onarır (<code>repair.js</code>), çalışma dizini sandbox'ı uygular, <code>edit_file</code> hatalarında en yakın satırları gösterir.</p>
+        </div>
+        <div class="card">
+          <h3>⚡ Otomatik Onay & Akıcı REPL</h3>
+          <p>Varsayılan otomatik onay ile kesintisiz çalışır, işlem bitince yeni komut bekler ve <code>/exit</code> komutuyla temiz şekilde kapanır.</p>
+        </div>
+        <div class="card">
+          <h3>🔀 Ctrl+P Model Seçici</h3>
+          <p>Ollama yerel modelleri ile OpenRouter, Groq, NVIDIA NIM ve NineRouter bulut modelleri arasında ok tuşlarıyla anında geçiş yapın.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="kurulum">
+      <h2>Nasıl Kurulur?</h2>
+      <p class="section-desc">Gereksinimler: <strong>Node.js 22+</strong> ve yerel modeller için <strong>Ollama</strong> (PDF okuma için isteğe bağlı <code>poppler-utils</code>).</p>
+      <pre><span class="code-comment"># 1. Repoyu klonla ve global CLI olarak bağla</span>
+git clone https://github.com/ilhanakd-max/Local_Ajan.git
+cd Local_Ajan
+npm link
+
+<span class="code-comment"># 2. Sürümü doğrula ve yerel model indir</span>
+locai --version
+ollama pull qwen3:1.7b
+
+<span class="code-comment"># 3. Herhangi bir proje klasöründe başlat</span>
+cd /proje/klasorun
+locai</pre>
+      <img class="flow-img" src="assets/nodejs_setup_flow.png" alt="LocAi Kurulum ve Kullanım Akışı" />
+    </section>
+
+    <section id="kullanim">
+      <h2>Kullanım ve REPL Komutları</h2>
+      <p class="section-desc">Etkileşimli oturum içinde kullanabileceğiniz başlıca komutlar:</p>
+      <table>
+        <thead>
+          <tr><th>Komut / Kısayol</th><th>Açıklama</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Ctrl+P</code></td><td>İnteraktif ok tuşlu model seçiciyi açar</td></tr>
+          <tr><td><code>/model [ad]</code></td><td>Aktif modeli değiştirir veya kullanılabilir modelleri listeler</td></tr>
+          <tr><td><code>/log</code> / <code>/log clear</code></td><td>Proje içi çalışma günlüğünü (<code>.locai/worklog.jsonl</code>) gösterir veya temizler</td></tr>
+          <tr><td><code>/ponytail</code></td><td>Minimalist kodlama modunu (sıfır aşırı mühendislik) açar/kapatır</td></tr>
+          <tr><td><code>/save &lt;ad&gt;</code> / <code>/load &lt;ad&gt;</code></td><td>Oturumu kaydeder veya geri yükler</td></tr>
+          <tr><td><code>/exit</code></td><td>Uygulamadan temiz şekilde çıkış yapar</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      LocAi v0.4.0-js • MIT Lisansı • <a href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+</body>
+</html>

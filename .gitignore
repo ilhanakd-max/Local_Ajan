@@ -1,12 +1,11 @@
-.venv/
-__pycache__/
-*.pyc
+node_modules/
+*.zip
 .env
 graphify-out/
 .DS_Store
 
-# Lokal Ajan oturum verileri
+# Lokal Ajan oturum ve günlük verileri
 .lokal_ajan/
+.locai/
 .tmp_scratch/
 *_backup*/
-*_backup.py
