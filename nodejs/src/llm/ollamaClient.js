@@ -18,6 +18,9 @@ export async function* chatStreamOllama({
   numCtx = 4096,
   temperature = 0.1,
   repeatPenalty = 1.15,
+  numPredict = 0,
+  topK = 0,
+  topP = 0,
   think = null,
 }) {
   const payload = {
@@ -30,6 +33,9 @@ export async function* chatStreamOllama({
       repeat_penalty: repeatPenalty,
     },
   };
+  if (numPredict > 0) payload.options.num_predict = numPredict;
+  if (topK > 0) payload.options.top_k = topK;
+  if (topP > 0) payload.options.top_p = topP;
   if (think !== null) {
     payload.think = think;
   }

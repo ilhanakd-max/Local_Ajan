@@ -123,6 +123,7 @@ def chat_stream(
     think: Optional[bool] = None,
     keep_alive: Optional[str] = "30m",
     timeout: Optional[float] = None,
+    format: Optional[Any] = None,
 ) -> Iterator[str]:
     """
     Send a chat request to Ollama and stream the response text.
@@ -146,6 +147,10 @@ def chat_stream(
         payload["think"] = think
     if keep_alive is not None:
         payload["keep_alive"] = keep_alive
+    if format is not None:
+        # "json" ya da bir JSON Schema (dict): Ollama kısıtlı çözümleme yapar,
+        # çıktı geçerli JSON olmak zorunda kalır (ufak modeller için kurtarma yolu).
+        payload["format"] = format
 
     # Yerel modellerde (özellikle CPU'da çalışan 7B+ büyük modellerde) diskten
     # yüklenme, KV cache tahsisi ve ilk prompt değerlendirmesi (prefill) uzun sürebilir.
@@ -239,7 +244,24 @@ def chat_once(
     options: Optional[Dict[str, Any]] = None,
     think: Optional[bool] = None,
     timeout: Optional[float] = None,
+    format: Optional[Any] = None,
 ) -> str:
     """Streaming olmayan, tüm yanıtı biriktirip tek seferde döndüren yardımcı.
     Örn. kısa doğrulama/özetleme çağrıları için kullanılabilir."""
-    return "".join(chat_stream(messages, model, host, options, think, timeout=timeout))
+    return "".join(chat_stream(messages, model, host, options, think, timeout=timeout, format=format))
+
+
+def tool_call_format_schema(tool_names: List[str]) -> Dict[str, Any]:
+    """Ollama `format` alanı için: {"name": <araç adı>, "arguments": {...}} şeması.
+
+    Ufak modellerin bozuk JSON/etiket ürettiği durumda, aynı isteği bu şemayla
+    kısıtlı çözümleyerek tekrar denemek geçerli bir çağrı elde etmenin en
+    güvenilir yoludur."""
+    return {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "enum": list(tool_names)},
+            "arguments": {"type": "object"},
+        },
+        "required": ["name", "arguments"],
+    }

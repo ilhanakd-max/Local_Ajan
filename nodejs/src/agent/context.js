@@ -3,8 +3,15 @@ const CHARS_PER_TOKEN = 3.5;
 const TRUNCATION_NOTICE =
   "[Not: Bağlam penceresi sınırlı olduğu için önceki konuşmadan bazı eski mesajlar kırpıldı. Sistem talimatı ve en güncel mesajlar korunuyor.]";
 
-export function truncateToolOutput(output, maxLength = 2000) {
+export function truncateToolOutput(output, maxLength = 2000, keepTail = 0) {
   if (!output || output.length <= maxLength) return output;
+  if (keepTail > 0 && keepTail < maxLength) {
+    // Kabuk çıktılarında hata/stack-trace sondadır: baş + son kısmı koru.
+    const head = output.slice(0, maxLength - keepTail);
+    const tail = output.slice(-keepTail);
+    const omitted = output.length - head.length - tail.length;
+    return `${head}\n\n... (${omitted} karakter atlandı; baş ve son kısım gösteriliyor.) ...\n\n${tail}`;
+  }
   return (
     output.slice(0, maxLength) +
     `\n\n... (Çıktı ${maxLength} karaktere kırpıldı. Devamını görmek için aracı tekrar, uygun parametrelerle çağırın.)`

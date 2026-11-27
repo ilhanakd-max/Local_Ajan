@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 
 def _param_type(schema: Dict[str, Any]) -> str:
@@ -59,6 +59,37 @@ _TOOL_CALL_EXAMPLE = (
 )
 
 
+# --- v0.4: ufak modeller için çekirdek araç seti -------------------------------
+# 0.6B-2B modeller 15+ araçlık listede yanlış araç seçiyor. Prompt'a yalnızca
+# çekirdek araçlar konur; ofis/git/inceleme araçları ancak kullanıcı isteğinde
+# ilgili anahtar kelimeler geçerse eklenir. (Kayıtlı araçların hepsi her zaman
+# ÇALIŞIR; bu yalnızca modelin gördüğü listeyi daraltır.)
+CORE_TOOLS = ("read_file", "write_file", "edit_file", "list_dir", "glob", "grep", "run_shell")
+
+_TOOL_GROUPS = (
+    (("excel", "xlsx", "spreadsheet", "tablo", "sheet", "hücre", "hucre"),
+     ("read_excel", "write_excel", "append_excel", "edit_excel_cells")),
+    (("pdf",), ("read_pdf", "write_pdf")),
+    (("git", "commit", "diff", "branch", "değişiklik", "degisiklik"), ("git_status", "git_diff")),
+    (("semantic", "where is", "nerede", "hangi dosya", "locate", "nerde"), ("semantic_code_search",)),
+    (("review", "audit", "finding", "inceleme", "hata bul", "bug"), ("report_finding", "semantic_code_search")),
+)
+
+
+def tools_for_request(user_text: str) -> set:
+    """Kullanıcı isteğindeki anahtar kelimelere göre prompt'a eklenecek ek araçlar."""
+    low = (user_text or "").lower()
+    extra: set = set()
+    for keywords, names in _TOOL_GROUPS:
+        if any(k in low for k in keywords):
+            extra.update(names)
+    return extra
+
+
+def _filter_tools(tools_schema: List[Dict[str, Any]], allowed: set) -> List[Dict[str, Any]]:
+    return [t for t in tools_schema if t.get("name") in allowed or t.get("name") == "delegate_task"]
+
+
 PONYTAIL_RULES = """
 === PONYTAIL MODE ===
 You are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.
@@ -90,8 +121,10 @@ Rules:
 Not lazy about: understanding the problem, input validation at trust boundaries, error handling that prevents data loss, security, accessibility, anything explicitly requested.
 """
 
-def get_system_prompt(profile_level: str, tools_schema: List[Dict[str, Any]], is_orchestrator: bool = False, workdir: str = ".", ponytail_enabled: bool = False) -> str:
+def get_system_prompt(profile_level: str, tools_schema: List[Dict[str, Any]], is_orchestrator: bool = False, workdir: str = ".", ponytail_enabled: bool = False, tiny: bool = False, extra_tools: Optional[set] = None) -> str:
     import platform
+    if tiny and not is_orchestrator:
+        tools_schema = _filter_tools(tools_schema, set(CORE_TOOLS) | set(extra_tools or ()))
     tools_list = format_tools_compact(tools_schema)
     current_os = platform.system()
     if current_os == "Windows":
@@ -133,6 +166,35 @@ Tool call format (exact, nothing else in the message):
 User: "create hello.html" ->
 {_TOOL_CALL_EXAMPLE.replace('write_file', 'delegate_task').replace('{"path": "hello.html", "content": "<h1>Hello</h1>"}', '{"task": "Create a hello.html file with a title"}')}
 """
+    elif tiny:
+        base_prompt = f"""You are a coding agent with real file/shell access. You act, you don't just talk.
+
+{os_info}
+Workspace: {workdir} (use RELATIVE paths, stay inside it)
+
+TOOLS (name(args): description):
+{tools_list}
+
+RULES:
+- ONE tool call per reply, exactly in this format, nothing else:
+<tool_call>
+{{"name": "tool_name", "arguments": {{"param": "value"}}}}
+</tool_call>
+- New file -> write_file. Existing file -> read_file first, then edit_file with old_str copied EXACTLY from the file (write_file is blocked on existing files).
+- Never guess a file's content. Never use nano/vim/less.
+- After a tool result: make the next tool call, or if the task is done answer in ONE short sentence and STOP. Never repeat the code you wrote.
+- Greetings/questions that need no file work: answer directly, no tool.
+- No <think> tags. No explanations before a tool call.
+
+User: "create hello.html" ->
+{_TOOL_CALL_EXAMPLE}
+
+User: "make the title blue in style.css" ->
+<tool_call>
+{{"name": "edit_file", "arguments": {{"path": "style.css", "old_str": "color: red;", "new_str": "color: blue;"}}}}
+</tool_call>
+
+User: "hello" -> Hello! How can I help you?"""
     elif profile_level == "minimal":
         base_prompt = f"""You are a coding agent with real file/shell access. You act, you don't just talk.
 
@@ -225,7 +287,7 @@ Hello! How can I help you?
 
 Remember: you are an AGENT. Complete the task with tool calls, confirm briefly, and STOP."""
 
-    if profile_level != "minimal":
+    if profile_level != "minimal" and not tiny:
         try:
             from lokal_ajan.tools.claim_tools import format_claim_memory_for_prompt
             claim_mem = format_claim_memory_for_prompt()

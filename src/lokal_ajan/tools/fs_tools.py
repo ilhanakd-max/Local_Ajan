@@ -126,6 +126,33 @@ class WriteFileTool(BaseTool):
         except Exception as e:
             return f"Error writing file: {e}"
 
+def _edit_not_found_message(path: str, content: str, old_str: str) -> str:
+    """edit_file eşleşme bulamadığında, modele DOSYADAKİ en yakın satırları gösterir.
+
+    Ufak modeller old_str'yi genelde hafızadan, hafifçe yanlış yazar (boşluk,
+    tırnak, harf). Sadece "bulunamadı" demek onları körlemesine tekrar denemeye
+    iter; en benzer gerçek satırı göstermek bir sonraki denemeyi neredeyse
+    her zaman düzeltir.
+    """
+    import difflib
+
+    first_line = next((ln for ln in old_str.split("\n") if ln.strip()), old_str).strip()
+    file_lines = content.split("\n")
+    stripped = [ln.strip() for ln in file_lines]
+    close = difflib.get_close_matches(first_line, stripped, n=3, cutoff=0.5)
+    msg = f"Error: Could not find old_str in {path}."
+    if close:
+        shown = []
+        for c in close:
+            idx = stripped.index(c)
+            shown.append(f"  line {idx + 1}: {file_lines[idx][:160]}")
+        msg += " Closest lines in the file:\n" + "\n".join(shown)
+        msg += "\nCopy old_str EXACTLY from the file (including spaces), or call read_file first."
+    else:
+        msg += " Call read_file to see the real content, then copy old_str EXACTLY from it."
+    return msg
+
+
 class EditFileArgs(BaseModel):
     path: str = Field(..., description="Path to the file to edit")
     old_str: str = Field(..., description="Exact string in the file to replace")
@@ -176,7 +203,7 @@ class EditFileTool(BaseTool):
                         f.write('\n'.join(res_lines))
                     return f"Successfully edited {path}"
                 
-            return f"Error: Could not find target string in {path}"
+            return _edit_not_found_message(path, c_norm, o_norm)
         except ValueError as e:
             return f"Error: {e}"
         except Exception as e:

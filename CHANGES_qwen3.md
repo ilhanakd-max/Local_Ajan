@@ -1,3 +1,37 @@
+# v0.4.0 — ufak modeller (qwen3:0.6b / 1.7b ve benzeri) için güvenilirlik turu
+
+Hedef: 0.6B-2B modellerde en sık görülen üç hata sınıfını (yanlış/uydurma araç ve
+parametre adı, bağlamın dolması, bozuk JSON) kaynağında azaltmak. Büyük modellerin
+(4B+ / standard prompt) davranışı değişmedi.
+
+1. **Araç adı / parametre onarımı** (`agent/repair.py`, parser'a bağlı): `create_file` →
+   `write_file`, `readfile` → `read_file`, `file_path`/`filename` → `path`, `text`/`code` →
+   `content`, `"3"` → `3`. Eskiden bu çağrılar sessizce atılıp "bozuk çağrı" turu harcatıyordu.
+   Düz metindeki `run(x)` gibi ifadeler yanlışlıkla araç sayılmasın diye yalnızca
+   etiketli/JSON stratejilerinde takma ad çözümleniyor.
+2. **Anlaşılır hata mesajları**: doğrulama hatasında eksik parametre + doğru kullanım +
+   örnek `<tool_call>`; bilinmeyen araçta "şunu mu demek istedin" önerisi; `edit_file`
+   eşleşme bulamayınca dosyadaki **en yakın satırlar** gösteriliyor.
+3. **Tiny prompt** (`profile.tiny`): ~1230 → ~570 token. Prompt'ta yalnızca çekirdek 7 araç
+   var; excel/pdf/git/inceleme araçları, kullanıcı isteğinde ilgili anahtar kelime geçince
+   eklenir (kayıtlı tüm araçlar her zaman çalışır). Araç sonucu hatırlatması kısaltıldı.
+4. **Bağlam sıkıştırma** (`agent/context.py`): bütçe aşılırsa konuşmayı atmadan önce eski
+   `read_file` çıktıları ve modelin eski `write_file` içerikleri özetleniyor (girdi
+   değiştirilmez). `run_shell` çıktısında baş + SON kısım korunur (hata genelde sondadır).
+5. **JSON-şemalı kısıtlı kurtarma**: bozuk araç çağrısında (tiny profiller, Ollama) aynı
+   konuşma Ollama `format` şemasıyla bir kez yeniden çözümleniyor; başarılırsa history'deki
+   bozuk metin temiz çağrıyla değiştirilir.
+6. **Örnekleme sınırları**: küçük profillere `num_predict` (3072-4096, dosya yazımını
+   kesmeyecek kadar geniş), `top_k=20`, `top_p=0.8`.
+7. **Node.js sürümü**: araç/parametre onarımı, kuyruk koruyan kırpma, `edit_file` ipucu ve
+   örnekleme ayarları taşındı. (Tiny prompt, bağlam sıkıştırma ve kısıtlı kurtarma yalnızca
+   Python sürümünde.)
+
+Testler: Python 26 yeni test (`tests/test_small_model_v04.py`, sahte Ollama ile uçtan uca
+döngü dahil), Node 7 yeni test (`nodejs/tests/smallModelV04.test.js`).
+
+---
+
 # qwen3 (0.6b / 1.7b / 4b ve benzeri ufak modeller) için yapılan değişiklikler
 
 Bu sürüm, mevcut `lokal-ajan` kod tabanı üzerine, **çok küçük Ollama modellerinde

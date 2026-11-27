@@ -3,7 +3,8 @@ import json
 from typing import Optional
 from lokal_ajan.agent.parser import extract_tool_call, extract_all_tool_calls
 from lokal_ajan.agent.history import ChatHistory
-from lokal_ajan.agent.prompt import get_system_prompt
+from lokal_ajan.agent.prompt import get_system_prompt, tools_for_request
+from lokal_ajan.agent.repair import repair_args, resolve_tool_name, explain_validation_error, unknown_tool_message
 from lokal_ajan.agent.thinking import filter_thinking_stream
 from lokal_ajan.tools.registry import registry
 from lokal_ajan.tools import fs_tools, git_tools  # noqa: F401
@@ -13,6 +14,7 @@ from lokal_ajan.llm.openrouter_client import chat_stream as openrouter_chat_stre
 from lokal_ajan.llm.ninerouter_client import chat_stream as ninerouter_chat_stream, NineRouterConnectionError
 from lokal_ajan.llm.groq_client import chat_stream as groq_chat_stream, GroqConnectionError
 from lokal_ajan.agent.context import truncate_tool_output, prepare_context
+from pydantic import ValidationError
 from rich.console import Console
 from lokal_ajan.config import Config
 from lokal_ajan.safety.guards import RepetitionLoopGuard, detect_text_repetition
@@ -37,6 +39,7 @@ class AgentLoop:
         self.session_name = session_name
         self._last_call_key = None
         self._last_call_success = False
+        self._extra_tools: set = set()  # tiny profillerde anahtar kelimeyle eklenen araçlar
 
 
         
@@ -65,7 +68,7 @@ class AgentLoop:
 
         # Set system prompt
         is_orch = bool(self.worker_model)
-        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        sys_prompt = self._build_system_prompt()
         self.history.add_message("system", sys_prompt)
 
     def _ensure_delegate_tool(self):
@@ -195,6 +198,71 @@ class AgentLoop:
         ]
         self.tools_schema.append(self.delegate_tool.get_schema())
 
+    def _build_system_prompt(self) -> str:
+        """Tek noktadan sistem prompt'u üretir (profil + ek araçlar + mod)."""
+        return get_system_prompt(
+            self.profile.prompt_level,
+            self.tools_schema,
+            is_orchestrator=bool(self.worker_model),
+            workdir=self.workdir,
+            ponytail_enabled=self.ponytail_enabled,
+            tiny=getattr(self.profile, "tiny", False),
+            extra_tools=self._extra_tools,
+        )
+
+    def _refresh_tools_for_request(self, user_input: str):
+        """Tiny profillerde: kullanıcı isteği ofis/git/inceleme araçları gerektiriyorsa
+        bunları prompt'taki araç listesine ekler (sistem mesajını günceller)."""
+        if not getattr(self.profile, "tiny", False):
+            return
+        extra = tools_for_request(user_input) - self._extra_tools
+        if not extra:
+            return
+        self._extra_tools |= extra
+        messages = self.history.get_messages()
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = self._build_system_prompt()
+
+    def _is_ollama_model(self) -> bool:
+        return not self.model_name.startswith(("openrouter/", "ninerouter/", "groq/"))
+
+    def _constrained_recovery(self, messages: list, think):
+        """Bozuk araç çağrısı sonrası TEK seferlik kurtarma: aynı konuşmayı Ollama'nın
+        `format` (JSON şeması) kısıtıyla yeniden çözümler. Geçerli bir (ad, args)
+        döndürür; olmazsa None. Yalnızca profile.constrained_fallback açıkken ve
+        Ollama modellerinde çağrılır."""
+        try:
+            from lokal_ajan.llm.ollama_client import chat_once, tool_call_format_schema
+            names = [t["name"] for t in self.tools_schema]
+            msgs = list(messages) + [{
+                "role": "user",
+                "content": (
+                    "Your last tool call was malformed. Reply with ONLY the next tool call as JSON: "
+                    '{"name": "<tool>", "arguments": {...}}'
+                ),
+            }]
+            raw = chat_once(
+                msgs, self.model_name, self.host,
+                options={
+                    "num_ctx": self.profile.num_ctx,
+                    "temperature": 0.0,
+                    "repeat_penalty": self.profile.repeat_penalty,
+                    **({"num_predict": self.profile.num_predict} if self.profile.num_predict else {}),
+                },
+                think=think,
+                timeout=getattr(self.config, "ollama_timeout", None),
+                format=tool_call_format_schema(names),
+            )
+            data = json.loads(raw)
+            name = resolve_tool_name(data.get("name"), names)
+            if not name:
+                return None
+            tool = registry.get_tool(name)
+            schema = tool.get_schema() if tool else None
+            return name, repair_args(data.get("arguments", {}), schema)
+        except Exception:
+            return None
+
     def reset_session(self):
         """
         Clears conversation history and re-initializes system prompt.
@@ -202,7 +270,7 @@ class AgentLoop:
         """
         self.history.clear()
         is_orch = bool(self.worker_model)
-        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        sys_prompt = self._build_system_prompt()
         self.history.add_message("system", sys_prompt)
         self._last_call_key = None
         self._last_call_success = False
@@ -219,7 +287,7 @@ class AgentLoop:
         """
         self.history.clear()
         is_orch = bool(self.worker_model)
-        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        sys_prompt = self._build_system_prompt()
         self.history.add_message("system", sys_prompt)
         for m in messages:
             if m.get("role") != "system":
@@ -243,7 +311,7 @@ class AgentLoop:
         self.model_name = new_model
         self.profile = new_profile
         is_orch = bool(self.worker_model)
-        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        sys_prompt = self._build_system_prompt()
         messages = self.history.get_messages()
         if messages and messages[0].get("role") == "system":
             messages[0]["content"] = sys_prompt
@@ -255,7 +323,7 @@ class AgentLoop:
         """Updates the worker model for orchestrator mode and synchronizes the system prompt."""
         self.worker_model = new_worker_model
         is_orch = bool(self.worker_model)
-        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        sys_prompt = self._build_system_prompt()
         messages = self.history.get_messages()
         if messages and messages[0].get("role") == "system":
             messages[0]["content"] = sys_prompt
@@ -276,7 +344,7 @@ class AgentLoop:
             self.tools_schema = registry.get_all_schemas()
 
         # Rebuild system prompt with updated tools schema
-        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        sys_prompt = self._build_system_prompt()
         if messages and messages[0].get("role") == "system":
             messages[0]["content"] = sys_prompt
         
@@ -291,7 +359,7 @@ class AgentLoop:
         
         self.ponytail_enabled = state
         is_orch = bool(self.worker_model)
-        sys_prompt = get_system_prompt(self.profile.prompt_level, self.tools_schema, is_orchestrator=is_orch, workdir=self.workdir, ponytail_enabled=self.ponytail_enabled)
+        sys_prompt = self._build_system_prompt()
         messages = self.history.get_messages()
         if messages and messages[0].get("role") == "system":
             messages[0]["content"] = sys_prompt
@@ -343,6 +411,7 @@ class AgentLoop:
         if cmd in ("exit", "quit", "/exit", "/quit", "q", "/q"):
             return False
             
+        self._refresh_tools_for_request(user_input)
         self.history.add_message("user", user_input)
         self._last_call_key = None
         self._last_call_success = False
@@ -367,6 +436,12 @@ class AgentLoop:
                 "temperature": self.profile.temperature,
                 "repeat_penalty": self.profile.repeat_penalty,
             }
+            if self.profile.num_predict:
+                options["num_predict"] = self.profile.num_predict
+            if self.profile.top_k:
+                options["top_k"] = self.profile.top_k
+            if self.profile.top_p:
+                options["top_p"] = self.profile.top_p
             # Qwen3 gibi hibrit-düşünme destekleyen modellerde thinking'i
             # API seviyesinde kapat (parser + stream filter zaten ek bir
             # güvenlik katmanı olarak <think> bloklarını süzüyor).
@@ -587,6 +662,21 @@ class AgentLoop:
                     console.print("[bold red]Model tekrar tekrar boş yanıt üretti, döngü durduruldu.[/bold red]")
                     break
 
+            # Ufak modellerde: bozuk çağrı -> önce JSON-şemalı kısıtlı çözümlemeyle kurtar
+            if (
+                not all_tool_calls
+                and getattr(self.profile, "constrained_fallback", False)
+                and self._is_ollama_model()
+                and re.search(r"<tool_call|<\|tool_call_start\|>|<function[=\s]", full_response, re.IGNORECASE)
+            ):
+                recovered = self._constrained_recovery(messages_to_send, think)
+                if recovered:
+                    console.print("[dim]Bozuk araç çağrısı JSON-şemalı kısıtlı çözümlemeyle kurtarıldı.[/dim]")
+                    all_tool_calls = [recovered]
+                    # history'deki bozuk metni temiz, kanonik çağrıyla değiştir
+                    canon = json.dumps({"name": recovered[0], "arguments": recovered[1]}, ensure_ascii=False)
+                    self.history.messages[-1]["content"] = f"<tool_call>\n{canon}\n</tool_call>"
+
             # Detect malformed/unparsed tool-call tags so the agent retries instead of exiting mid-task
             if not all_tool_calls and re.search(r"<tool_call|<\|tool_call_start\|>|<function[=\s]", full_response, re.IGNORECASE):
                 parse_fail_count += 1
@@ -674,7 +764,8 @@ class AgentLoop:
                         else:
                             with console.status(f"[bold yellow]⚙️ '{tool_name}' aracı çalıştırılıyor...[/bold yellow]", spinner="dots"):
                                 try:
-                                    # Validate arguments using Pydantic schema
+                                    # Parametre adı/tip onarımı + Pydantic doğrulaması
+                                    args = repair_args(args, tool.get_schema())
                                     validated_args = tool.args_schema(**args).model_dump()
                                     
                                     # For fs tools, we might want to check path safety
@@ -697,20 +788,26 @@ class AgentLoop:
                                             continue
                                         
                                     result = tool.run(**validated_args)
+                                except ValidationError as e:
+                                    result = explain_validation_error(tool.get_schema(), e)
                                 except Exception as e:
                                     result = f"Error executing tool: {e}"
                             
                         result = str(result)
                         is_error = result.startswith("Error")
                         self._last_call_success = not is_error
-                        result = truncate_tool_output(result, self.profile.max_tool_output)
+                        result = truncate_tool_output(
+                            result,
+                            self.profile.max_tool_output,
+                            keep_tail=self.profile.max_tool_output // 4 if tool_name == "run_shell" else 0,
+                        )
                         summary = result[:300] + ("..." if len(result) > 300 else "")
                         console.print(f"[dim]Tool Sonucu:\n{summary}[/dim]")
                         all_results.append(f"'{tool_name}' → {result}")
                         loop_guard.record(tool_name, args, is_error=is_error)
                         step_count += 1
                     else:
-                        error_msg = f"Hata: '{tool_name}' adında bir araç bulunamadı."
+                        error_msg = unknown_tool_message(tool_name, [t["name"] for t in self.tools_schema])
                         console.print(f"[bold red]{error_msg}[/bold red]")
                         all_results.append(error_msg)
                         step_count += 1
@@ -718,11 +815,22 @@ class AgentLoop:
                 # After executing all tool calls from this response, add combined result
                 if all_results:
                     combined = "\n".join(all_results)
+                    if getattr(self.profile, "tiny", False):
+                        reminder = (
+                            "(If the task is not finished, make the next tool call. "
+                            "If finished, reply with ONE short sentence and STOP. Do not repeat code.)"
+                        )
+                    else:
+                        reminder = (
+                            "(Kalan başka dosya/işlem yoksa görevi bitir. KESİNLİKLE KODUN ÖZETİNİ VEYA İÇERİĞİNİ YAZMA! "
+                            "Yalnızca 1 kısa cümleyle ne yapıldığını söyle ve dur. / If done, do NOT dump or repeat the code, "
+                            "reply with 1 short confirmation sentence and STOP.)"
+                        )
                     self.history.add_message(
                         "user",
                         f"Araç(lar) çalıştırıldı ve şu sonuçları döndürdü:\n"
                         f"<tool_output>\n{combined}\n</tool_output>\n"
-                        f"(Kalan başka dosya/işlem yoksa görevi bitir. KESİNLİKLE KODUN ÖZETİNİ VEYA İÇERİĞİNİ YAZMA! Yalnızca 1 kısa cümleyle ne yapıldığını söyle ve dur. / If done, do NOT dump or repeat the code, reply with 1 short confirmation sentence and STOP.)"
+                        f"{reminder}"
                     )
 
                 if batch_aborted:

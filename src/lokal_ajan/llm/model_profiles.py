@@ -24,6 +24,20 @@ class ModelProfile(BaseModel):
     # gönderileceği (agent/loop.py tarafından kullanılır).
     parse_retry_limit: int = 2
 
+    # --- v0.4: ufak modeller (<= ~2B) için ek alanlar ---
+    # True ise: çok kısa sistem prompt'u, yalnızca çekirdek araçlar (diğerleri
+    # kullanıcı isteğindeki anahtar kelimelere göre eklenir), kısa hatırlatmalar.
+    tiny: bool = False
+    # Tek yanıtta üretilecek en fazla token (0 = sınırsız). Ufak modellerde
+    # kontrolsüz uzayan/tekrar eden çıktıyı keser ve CPU'da süreyi sınırlar.
+    num_predict: int = 0
+    # Örnekleme: ufak modellerde düşük top_k/top_p araç JSON'unu daha kararlı yapar.
+    top_k: int = 0
+    top_p: float = 0.0
+    # Ardışık parse hatalarında Ollama'nın `format` (JSON şeması) kısıtlı
+    # çözümlemesiyle tek seferlik kurtarma denemesi yap.
+    constrained_fallback: bool = False
+
 
 # Modelin adından yaklaşık parametre büyüklüğünü (milyar cinsinden) çıkarır.
 # "qwen3:0.6b" -> 0.6, "qwen2.5-coder:7b" -> 7.0, "phi4-mini" -> None
@@ -84,6 +98,11 @@ PROFILES = [
         disable_thinking=True,
         repeat_penalty=1.2,
         parse_retry_limit=3,
+        tiny=True,
+        num_predict=3072,
+        top_k=20,
+        top_p=0.8,
+        constrained_fallback=True,
     ),
     ModelProfile(
         # kullanıcının bahsettiği "qwen3.5:0.8b" gibi varyantları da
@@ -98,6 +117,11 @@ PROFILES = [
         disable_thinking=True,
         repeat_penalty=1.2,
         parse_retry_limit=3,
+        tiny=True,
+        num_predict=3072,
+        top_k=20,
+        top_p=0.8,
+        constrained_fallback=True,
     ),
     ModelProfile(
         name_pattern=r"qwen3(?:\.\d+)?[.:\-]?\s*1\.[5-9]b",
@@ -110,6 +134,11 @@ PROFILES = [
         disable_thinking=True,
         repeat_penalty=1.15,
         parse_retry_limit=3,
+        tiny=True,
+        num_predict=4096,
+        top_k=20,
+        top_p=0.8,
+        constrained_fallback=True,
     ),
     ModelProfile(
         name_pattern=r"qwen3(?:\.\d+)?[.:\-]?\s*(?:2|3)(?:\.\d+)?b",
@@ -122,6 +151,10 @@ PROFILES = [
         disable_thinking=True,
         repeat_penalty=1.15,
         parse_retry_limit=3,
+        num_predict=4096,
+        top_k=20,
+        top_p=0.8,
+        constrained_fallback=True,
     ),
     ModelProfile(
         name_pattern=r"qwen3(?:\.\d+)?[.:\-]?\s*4b",
@@ -134,6 +167,9 @@ PROFILES = [
         disable_thinking=True,
         repeat_penalty=1.1,
         parse_retry_limit=2,
+        num_predict=6144,
+        top_k=20,
+        top_p=0.8,
     ),
     ModelProfile(
         name_pattern=r"qwen3(?:\.\d+)?[.:\-]?\s*(8|14|32)b",
@@ -172,6 +208,11 @@ PROFILES = [
         max_tool_output=4000,
         repeat_penalty=1.2,
         parse_retry_limit=3,
+        tiny=True,
+        num_predict=3072,
+        top_k=20,
+        top_p=0.8,
+        constrained_fallback=True,
     ),
     ModelProfile(
         name_pattern=r"qwen2\.5[.:\-]?\s*1\.5b",
@@ -182,6 +223,11 @@ PROFILES = [
         max_tool_output=8000,
         repeat_penalty=1.15,
         parse_retry_limit=3,
+        tiny=True,
+        num_predict=4096,
+        top_k=20,
+        top_p=0.8,
+        constrained_fallback=True,
     ),
     ModelProfile(
         name_pattern=r"qwen2\.5-coder",
@@ -200,6 +246,11 @@ PROFILES = [
         max_tool_output=6000,
         repeat_penalty=1.15,
         parse_retry_limit=3,
+        tiny=True,
+        num_predict=4096,
+        top_k=20,
+        top_p=0.8,
+        constrained_fallback=True,
     ),
     ModelProfile(
         name_pattern=r"llama3\.2",
@@ -218,6 +269,11 @@ PROFILES = [
         max_tool_output=4000,
         repeat_penalty=1.15,
         parse_retry_limit=3,
+        tiny=True,
+        num_predict=4096,
+        top_k=20,
+        top_p=0.8,
+        constrained_fallback=True,
     ),
     ModelProfile(
         name_pattern=r"nemotron-3-super-120b",
@@ -292,6 +348,11 @@ def _size_based_profile(model_name: str, size_b: float) -> ModelProfile:
             disable_thinking=True,
             repeat_penalty=1.2,
             parse_retry_limit=3,
+            tiny=True,
+            num_predict=3072,
+            top_k=20,
+            top_p=0.8,
+            constrained_fallback=True,
         )
     if size_b <= 3.0:
         return ModelProfile(
@@ -305,6 +366,11 @@ def _size_based_profile(model_name: str, size_b: float) -> ModelProfile:
             disable_thinking=True,
             repeat_penalty=1.15,
             parse_retry_limit=3,
+            tiny=True,
+            num_predict=4096,
+            top_k=20,
+            top_p=0.8,
+            constrained_fallback=True,
         )
     if size_b <= 9.0:
         return ModelProfile(

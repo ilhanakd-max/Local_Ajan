@@ -23,7 +23,7 @@ Turn small local LLMs into practical coding agents.
 LocAi is a cross-platform (Windows, macOS, Linux) terminal-based agentic CLI that gives LLMs the ability to read files, modify code, execute commands, inspect projects, use tools and perform multi-step tasks.
 Designed with a special focus on small and resource-efficient models such as Qwen3 0.6B / 1.7B / 4B.
 
-📦 **Version:** `0.3.17` • 📝 **Changelog:** [CHANGES_qwen3.md](CHANGES_qwen3.md)
+📦 **Version:** `0.4.0` • 📝 **Changelog:** [CHANGES_qwen3.md](CHANGES_qwen3.md)
 
 [🇹🇷 Türkçe](#türkçe-kılavuz) • [🇬🇧 English](#english-guide) • [📦 Kurulum / Install](INSTALL.md) • [🤝 Katkı / Contribute](CONTRIBUTING.md) • [💬 Discussions](https://github.com/ilhanakd-max/Local_Ajan/discussions)
 
@@ -112,6 +112,11 @@ Qwen3 optimizations include:
 - Empty-response recovery
 - Context-window management
 - Retry handling
+- **v0.4:** tiny-model prompt (~55% fewer tokens), core-tool subset with keyword-based tool injection
+- **v0.4:** tool-name / argument repair (`create_file` → `write_file`, `file_path` → `path`, `"3"` → `3`)
+- **v0.4:** stale tool-output & written-file compaction before dropping conversation history
+- **v0.4:** JSON-schema constrained recovery (Ollama `format`) for malformed tool calls
+- **v0.4:** `num_predict` / `top_k` / `top_p` limits, `edit_file` closest-line hints, head+tail output truncation
 
 The goal is simple: Get useful agent behavior from models that would normally be considered too small for serious agent workflows.
 

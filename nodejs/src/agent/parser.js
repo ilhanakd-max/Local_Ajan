@@ -1,5 +1,6 @@
 import { registry } from "../tools/index.js";
 import { stripThinking } from "./thinking.js";
+import { resolveToolName, repairArgs } from "./repair.js";
 
 function normalizeBrokenTags(text) {
   return text
@@ -18,6 +19,17 @@ function buildValidNames(extraValidNames = null) {
     for (const n of extraValidNames) valid.add(n);
   }
   return valid;
+}
+
+// Etiketli/JSON stratejilerinde: takma adlı araç adını (create_file -> write_file)
+// ve parametre adlarını onarır. Geçersizse null.
+function acceptResult(res, validNames) {
+  if (!res) return null;
+  const name = resolveToolName(res.name, validNames);
+  if (!name) return null;
+  const tool = registry.get(name);
+  const schema = tool ? { parameters: tool.parameters } : null;
+  return { ...res, name, args: schema ? repairArgs(res.args, schema) : res.args };
 }
 
 function extractBalancedJson(text) {
@@ -254,7 +266,7 @@ export function extractAllToolCalls(rawText, extraValidNames = null) {
       tryParseXmlToolCall(inner, validNames) ||
       tryParseFunctionCall(inner, validNames) ||
       tryParseArgKeyValue(inner, validNames);
-    if (res && validNames.has(res.name)) found.push(res);
+    { const acc = acceptResult(res, validNames); if (acc) found.push(acc); }
   }
   if (found.length) return found;
 
@@ -267,7 +279,7 @@ export function extractAllToolCalls(rawText, extraValidNames = null) {
       tryParseXmlToolCall(inner, validNames) ||
       tryParseFunctionCall(inner, validNames) ||
       tryParseArgKeyValue(inner, validNames);
-    if (res && validNames.has(res.name)) found.push(res);
+    { const acc = acceptResult(res, validNames); if (acc) found.push(acc); }
   }
   if (found.length) return found;
 
@@ -275,7 +287,7 @@ export function extractAllToolCalls(rawText, extraValidNames = null) {
   const jsonBlockRe = /```(?:json)?\s*([\s\S]*?)```/gi;
   while ((m = jsonBlockRe.exec(text)) !== null) {
     const res = tryParseToolJson(m[1]);
-    if (res && validNames.has(res.name)) found.push(res);
+    { const acc = acceptResult(res, validNames); if (acc) found.push(acc); }
   }
   if (found.length) return found;
 

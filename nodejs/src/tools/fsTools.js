@@ -17,6 +17,38 @@ function formatDirEntries(dirPath, limit = 200) {
   return lines.join("\n") || "(empty directory)";
 }
 
+function lineSimilarity(a, b) {
+  // Ortak karakter dizisi oranı (hafif): iki satırın benzerliği 0..1
+  if (!a.length || !b.length) return 0;
+  const shorter = a.length < b.length ? a : b;
+  const longer = a.length < b.length ? b : a;
+  let matches = 0, pos = 0;
+  for (const ch of shorter) {
+    const idx = longer.indexOf(ch, pos);
+    if (idx !== -1) { matches++; pos = idx + 1; }
+  }
+  return (2 * matches) / (a.length + b.length);
+}
+
+// edit_file eşleşme bulamayınca modele dosyadaki EN YAKIN satırları göster.
+function editNotFoundMessage(targetPath, content, oldStr) {
+  const firstLine = (oldStr.split("\n").find((l) => l.trim()) || oldStr).trim();
+  const lines = content.split("\n");
+  const scored = lines
+    .map((l, i) => ({ i, l, score: lineSimilarity(firstLine, l.trim()) }))
+    .filter((x) => x.l.trim() && x.score >= 0.6)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+  let msg = `Error: 'old_str' not found in '${targetPath}'.`;
+  if (scored.length) {
+    msg += " Closest lines in the file:\n" + scored.map((x) => `  line ${x.i + 1}: ${x.l.slice(0, 160)}`).join("\n");
+    msg += "\nCopy old_str EXACTLY from the file (including spaces), or call read_file first.";
+  } else {
+    msg += " Call read_file to see the real content, then copy old_str EXACTLY from it.";
+  }
+  return msg;
+}
+
 export class ReadFileTool {
   constructor(workdir = null) {
     this.name = "read_file";
@@ -164,7 +196,7 @@ export class EditFileTool {
     try {
       const content = fs.readFileSync(safePath, "utf8");
       if (!content.includes(old_str)) {
-        return `Error: 'old_str' not found in '${targetPath}'. Read the file first and copy exact text.`;
+        return editNotFoundMessage(targetPath, content, old_str);
       }
       const count = content.split(old_str).length - 1;
       if (count > 1) {

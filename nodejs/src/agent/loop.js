@@ -174,6 +174,9 @@ export class AgentLoop {
       numCtx: this.profile.num_ctx,
       temperature: this.profile.temperature,
       repeatPenalty: this.profile.repeat_penalty,
+      numPredict: this.profile.num_predict || 0,
+      topK: this.profile.top_k || 0,
+      topP: this.profile.top_p || 0,
       think: thinkOpt,
     });
   }
@@ -436,7 +439,11 @@ export class AgentLoop {
           result = `Error executing '${tool.name}': ${err.message}`;
         }
 
-        const truncated = truncateToolOutput(String(result ?? ""), this.profile.max_tool_output);
+        const truncated = truncateToolOutput(
+          String(result ?? ""),
+          this.profile.max_tool_output,
+          tool.name === "run_shell" ? Math.floor(this.profile.max_tool_output / 4) : 0
+        );
         const previewLine = truncated.split("\n")[0].slice(0, 120);
         this.workLog.add(tool.name, `${formatArgsPreview(call.args || {})} -> ${previewLine}`);
         this.history.addToolResult(

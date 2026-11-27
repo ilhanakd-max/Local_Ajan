@@ -4,6 +4,7 @@ import ast
 from typing import Dict, Any, Tuple, Optional, Set, List
 from lokal_ajan.tools.registry import registry
 from lokal_ajan.agent.thinking import strip_thinking
+from lokal_ajan.agent.repair import resolve_tool_name, repair_args
 
 
 def _normalize_broken_tags(text: str) -> str:
@@ -76,6 +77,23 @@ def _build_valid_names(extra_valid_names: Optional[Set[str]] = None) -> Set[str]
     return valid
 
 
+def _accept(result, valid_tool_names: Set[str], strict: bool = False):
+    """Ayrıştırılan (ad, args) çiftini doğrular; araç adı yaklaşık yazılmışsa
+    (create_file -> write_file, readfile -> read_file ...) gerçek ada çevirir ve
+    parametre adlarını/tiplerini aracın şemasına göre onarır. Geçersizse None."""
+    if not result:
+        return None
+    name, args = result
+    if name == "_write_multiple":
+        return result
+    resolved = name if (strict and name in valid_tool_names) else (None if strict else resolve_tool_name(name, valid_tool_names))
+    if not resolved:
+        return None
+    tool = registry.get_tool(resolved)
+    schema = tool.get_schema() if tool else None
+    return resolved, repair_args(args, schema)
+
+
 _ALREADY_DONE_PATTERN = (
     r"(?:has been|was)\s+(?:successfully\s+)?(?:created|saved|written|completed)|"
     r"successfully\s+(?:created|saved|written|completed)|"
@@ -131,7 +149,8 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
     if lfm_match:
         inner = lfm_match.group(1).strip()
         result = _try_parse_tool_json(inner) or _try_parse_function_call(inner) or _try_parse_xml_tool_call(inner, valid_tool_names)
-        if result and result[0] in valid_tool_names:
+        result = _accept(result, valid_tool_names)
+        if result:
             return result
 
     # Strategy 2: Explicit <tool_call> tags
@@ -151,13 +170,15 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
         # Try <tool_call>name<arg_key>k</arg_key><arg_value>v</arg_value></tool_call> format
         if not result:
             result = _try_parse_arg_key_value_format(inner, valid_tool_names)
-        if result and result[0] in valid_tool_names:
+        result = _accept(result, valid_tool_names)
+        if result:
             return result
 
     # Strategy 2.5: XML-based tool calls (Nemotron, Hermes, Mistral, Qwen XML tags)
     # e.g. <function=delegate_task><parameter=task>...</parameter></function>
     xml_result = _try_parse_xml_tool_call(text, valid_tool_names)
-    if xml_result and xml_result[0] in valid_tool_names:
+    xml_result = _accept(xml_result, valid_tool_names)
+    if xml_result:
         return xml_result
 
     # Strategy 3: Markdown code block (```json ... ```)
@@ -167,7 +188,8 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
         json_str = _extract_balanced_json(block)
         if json_str:
             result = _try_parse_tool_json(json_str)
-            if result and result[0] in valid_tool_names:
+            result = _accept(result, valid_tool_names)
+            if result:
                 return result
 
 
@@ -178,14 +200,17 @@ def extract_tool_call(text: str, extra_valid_names: Optional[Set[str]] = None) -
     fn_candidates = re.findall(r"\[?\b[a-zA-Z_][a-zA-Z0-9_]*\s*\([\s\S]*?\)\s*\]?", text_no_codeblocks)
     for cand in fn_candidates:
         result = _try_parse_function_call(cand)
-        if result and result[0] in valid_tool_names:
+        # strict: düz metindeki "run(x)" gibi ifadeler takma adla araca çevrilmez
+        result = _accept(result, valid_tool_names, strict=True)
+        if result:
             return result
 
     # Strategy 5: Find any balanced { ... } that looks like a tool call
     json_str = _extract_balanced_json(text)
     if json_str:
         result = _try_parse_tool_json(json_str)
-        if result and result[0] in valid_tool_names:
+        result = _accept(result, valid_tool_names, strict=True)
+        if result:
             return result
 
     # Strategy 6: Fallback for weak/conversational models that output code blocks
@@ -250,7 +275,8 @@ def extract_all_tool_calls(text: str, extra_valid_names: Optional[Set[str]] = No
                     result = _try_parse_tool_json(balanced)
             if not result:
                 result = _try_parse_arg_key_value_format(inner, valid_tool_names)
-            if result and result[0] in valid_tool_names:
+            result = _accept(result, valid_tool_names)
+            if result:
                 results.append(result)
 
     # 2. Check for code-block file fallback (_write_multiple / write_file)
