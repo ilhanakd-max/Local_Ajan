@@ -24,6 +24,9 @@ export function getSystemPrompt({
 
   const claimMemory = promptLevel !== "minimal" ? formatClaimMemoryForPrompt() : "";
   const ponytailBlock = ponytailMode ? PONYTAIL_DIRECTIVE : "";
+  const orchBlock = orchestratorMode
+    ? `\nORCHESTRATOR MODE ACTIVE:\nYou are the Brain (planner/coordinator). You MUST delegate file creation, editing, and shell subtasks to Worker model '${workerModel || "local"}' using:\n<tool_call>\n{"name": "delegate_task", "arguments": {"task_description": "...", "context_files": []}}\n</tool_call>\nDo NOT write code/files directly yourself when orchestrator mode is active — delegate to the worker, then review/summarize.\n`
+    : "";
 
   if (promptLevel === "minimal") {
     return [
@@ -35,6 +38,7 @@ export function getSystemPrompt({
       "- EDIT OVER WRITE: Use write_file ONLY for new files. Use edit_file for existing files. Do NOT edit files unless the task requires modifying them.",
       "- CLAIM VERIFICATION: Only use report_finding when the user explicitly asks for a code review or bug audit.",
       "- ONLY report exact file paths, outputs, and test results you directly observed.",
+      orchBlock,
       "",
       "AVAILABLE TOOLS:",
       toolLines,
@@ -48,10 +52,6 @@ export function getSystemPrompt({
       .filter(Boolean)
       .join("\n");
   }
-
-  const orchBlock = orchestratorMode
-    ? `\nORCHESTRATOR MODE: You may delegate isolated subtasks using delegate_task(task_description, context_files) to worker model '${workerModel || "local"}'.\n`
-    : "";
 
   return [
     "You are LocAi, a privacy-first local AI coding agent running in Node.js.",

@@ -210,6 +210,9 @@ export class AgentLoop {
     if (!this.workerModel) {
       return "Error: Worker model is not configured.";
     }
+    if (!this.quiet) {
+      console.log(`  ${ansi.gray("├─")} ${ansi.boldYellow("🤝 delegate_task")} → ${ansi.cyan(this.workerModel)}`);
+    }
     const worker = new AgentLoop({
       modelName: this.workerModel,
       host: this.host,
@@ -222,7 +225,12 @@ export class AgentLoop {
       quiet: true,
     });
     const ctxNote = context_files.length ? `\nRelevant files: ${context_files.join(", ")}` : "";
-    return worker.runTurn(`${task_description}${ctxNote}`);
+    const out = await worker.runTurn(`${task_description}${ctxNote}`);
+    if (!this.quiet) {
+      const preview = String(out || "").split("\n")[0].slice(0, 100);
+      console.log(`  ${ansi.gray("└─")} ${ansi.green("✓")} ${ansi.dim(`İşçi (${this.workerModel}): ${preview}`)}`);
+    }
+    return out;
   }
 
   async runTurn(userInput) {
