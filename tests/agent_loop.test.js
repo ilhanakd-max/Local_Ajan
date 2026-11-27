@@ -66,3 +66,27 @@ test("AgentLoop auto-attaches quoted local file paths dropped into the prompt", 
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test("AgentLoop.setWorkerModel toggles orchestrator mode and updates system prompt", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "locai-orch-"));
+  try {
+    const agent = new AgentLoop({
+      modelName: "groq/llama-3.3-70b-versatile",
+      workdir: tmp,
+      autoConfirm: true,
+      quiet: true,
+    });
+    assert.doesNotMatch(agent.history.messages[0].content, /ORCHESTRATOR MODE/);
+
+    agent.setWorkerModel("qwen3:1.7b");
+    assert.equal(agent.workerModel, "qwen3:1.7b");
+    assert.match(agent.history.messages[0].content, /ORCHESTRATOR MODE/);
+    assert.match(agent.history.messages[0].content, /qwen3:1\.7b/);
+
+    agent.setWorkerModel(null);
+    assert.equal(agent.workerModel, null);
+    assert.doesNotMatch(agent.history.messages[0].content, /ORCHESTRATOR MODE/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

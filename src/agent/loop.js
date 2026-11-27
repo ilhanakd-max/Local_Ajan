@@ -160,6 +160,11 @@ export class AgentLoop {
     this.refreshPrompt();
   }
 
+  setWorkerModel(workerModel) {
+    this.workerModel = workerModel || null;
+    this.refreshPrompt();
+  }
+
   setPonytailMode(enabled) {
     this.ponytailMode = Boolean(enabled);
     this.refreshPrompt();

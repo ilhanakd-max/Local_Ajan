@@ -75,15 +75,64 @@ function buildModelChoices(config, ollamaModels, currentModel) {
 
 async function openInteractiveModelSelector(agent, config, pauseReadline) {
   const ollamaModels = await listOllamaModels(config.ollama_host);
-  const choices = buildModelChoices(config, ollamaModels, agent.modelName);
-  if (!choices.length) {
+  const modelChoices = buildModelChoices(config, ollamaModels, agent.modelName);
+  if (!modelChoices.length) {
     console.log(ansi.dim("  (Ollama'ya ulaşılamadı veya yüklü model yok)"));
     return;
   }
 
   if (input.isTTY) {
     if (pauseReadline) pauseReadline();
-    const chosen = await selectWithArrows("Model Seçin:", choices, agent.modelName);
+    const orchStatus = agent.workerModel
+      ? ansi.boldGreen(`Aktif · İşçi: ${agent.workerModel}`)
+      : ansi.dim("Kapalı");
+    const menuChoices = [
+      {
+        value: "__ORCHESTRATOR_MENU__",
+        label: `${ansi.boldYellow("⚡ Orkestratör Modu")} [${orchStatus}]`,
+      },
+      ...modelChoices,
+    ];
+
+    const chosen = await selectWithArrows("Model Seçin:", menuChoices, agent.modelName);
+    if (chosen === "__ORCHESTRATOR_MENU__") {
+      const action = await selectWithArrows("Orkestratör Modu:", [
+        { value: "start", label: `${ansi.boldGreen("▶ Başlat")} ${ansi.dim("(1. Beyin · 2. İşçi model seç)")}` },
+        { value: "cancel", label: `${ansi.red("✕ İptal Et")} ${ansi.dim("(Orkestratör modunu kapat)")}` },
+      ]);
+      if (action === "cancel") {
+        agent.setWorkerModel(null);
+        saveState({ worker_model: null });
+        console.log(ansi.green(`✓ Orkestratör modu kapatıldı (tekli model: ${agent.modelName}).`));
+        return;
+      }
+      if (action === "start") {
+        const brain = await selectWithArrows("1/2 · Beyin (Brain) Modeli Seçin:", modelChoices, agent.modelName);
+        if (!brain) {
+          console.log(ansi.dim("Orkestratör seçimi iptal edildi."));
+          return;
+        }
+        const worker = await selectWithArrows(
+          "2/2 · İşçi (Worker) Modeli Seçin:",
+          modelChoices,
+          agent.workerModel || brain
+        );
+        if (!worker) {
+          console.log(ansi.dim("Orkestratör seçimi iptal edildi."));
+          return;
+        }
+        agent.setModel(brain);
+        agent.setWorkerModel(worker);
+        saveState({ model: brain, worker_model: worker });
+        console.log(ansi.green("✓ Orkestratör modu başlatıldı!"));
+        console.log(`  ${ansi.cyan("Beyin:")} ${brain}`);
+        console.log(`  ${ansi.yellow("İşçi:")}  ${worker}`);
+      } else {
+        console.log(ansi.dim("Orkestratör menüsünden çıkıldı."));
+      }
+      return;
+    }
+
     if (chosen) {
       agent.setModel(chosen);
       saveState({ model: chosen });
@@ -95,7 +144,7 @@ async function openInteractiveModelSelector(agent, config, pauseReadline) {
   }
 
   console.log(ansi.boldCyan("Kullanılabilir Modeller:"));
-  for (const c of choices) {
+  for (const c of modelChoices) {
     const mark = c.value === agent.modelName ? ansi.boldGreen(" ◄ aktif") : "";
     console.log(`  - ${c.label}${mark}`);
   }
@@ -308,7 +357,8 @@ export async function main(argv = process.argv.slice(2)) {
 
   while (true) {
     const modeTag = agent.ponytailMode ? ` ${ansi.gray("·")} ${ansi.magenta("ponytail")}` : "";
-    const headerLine = `${ansi.accentBlue("┃")} ${ansi.accentBlue("Build")} ${ansi.gray("·")} ${ansi.dim(agent.modelName)}${modeTag}`;
+    const orchTag = agent.workerModel ? ` ${ansi.gray("·")} ${ansi.yellow(`orch:${agent.workerModel}`)}` : "";
+    const headerLine = `${ansi.accentBlue("┃")} ${ansi.accentBlue("Build")} ${ansi.gray("·")} ${ansi.dim(agent.modelName)}${orchTag}${modeTag}`;
     const promptPrefix = `${ansi.accentBlue("┃")} ${ansi.boldGreen("❯")} `;
 
     const resInput = await readPromptInput({
