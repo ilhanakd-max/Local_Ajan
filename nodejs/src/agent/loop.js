@@ -1,9 +1,12 @@
+import fs from "node:fs";
+import path from "node:path";
 import { getProfileForModel } from "../llm/modelProfiles.js";
 import { chatStreamOllama } from "../llm/ollamaClient.js";
 import { chatStreamOpenAICompat, resolveProvider } from "../llm/openaiCompatClient.js";
 import { registry } from "../tools/index.js";
 import { confirmAction } from "../safety/confirm.js";
 import { RepetitionLoopGuard, detectTextRepetition } from "../safety/guards.js";
+import { getSafePath } from "../safety/sandbox.js";
 import { ansi } from "../ui/ansi.js";
 import { ChatHistory } from "./history.js";
 import { prepareContext, truncateToolOutput } from "./context.js";
@@ -31,6 +34,65 @@ function formatArgsPreview(args = {}) {
     }
   }
   return JSON.stringify(preview);
+}
+
+function attachReferencedFiles(userInput, workdir, quiet = false) {
+  const raw = String(userInput || "").trim();
+  if (!raw) return userInput;
+
+  const candidates = new Set();
+  for (const m of raw.matchAll(/['"]([^'"]+)['"]/g)) {
+    candidates.add(m[1].trim());
+  }
+  for (const m of raw.matchAll(/(?:^|\s)((?:\/|\.\/|\.\.\/)?[\w.\-/\\]+\.[a-zA-Z0-9]{1,10})(?=$|\s)/g)) {
+    candidates.add(m[1].trim());
+  }
+
+  const attached = [];
+  const seenFiles = new Set();
+  for (const cand of candidates) {
+    if (!cand || cand.includes("://")) continue;
+    try {
+      const safe = getSafePath(cand, workdir);
+      if (seenFiles.has(safe) || !fs.existsSync(safe)) continue;
+      const stat = fs.statSync(safe);
+      if (!stat.isFile()) continue;
+      const buf = fs.readFileSync(safe);
+      if (buf.includes(0)) continue; // skip binary files
+      seenFiles.add(safe);
+      const rel = path.relative(workdir, safe) || path.basename(safe);
+      const text = buf.toString("utf8");
+      const maxChars = 12000;
+      const body = text.length > maxChars
+        ? `${text.slice(0, maxChars)}\n... [kısaltıldı: toplam ${text.length} karakter]`
+        : text;
+      attached.push({ rel, body, chars: text.length });
+    } catch {
+      // ignore invalid or out-of-workdir paths
+    }
+  }
+
+  if (!attached.length) return userInput;
+
+  if (!quiet) {
+    for (const f of attached) {
+      console.log(ansi.dim(`  📎 ${f.rel} (${f.chars} krk) otomatik eklendi`));
+    }
+  }
+
+  const strippedOnlyPaths = raw
+    .replace(/['"][^'"]+['"]/g, "")
+    .replace(/(?:^|\s)(?:\/|\.\/|\.\.\/)?[\w.\-/\\]+\.[a-zA-Z0-9]{1,10}(?=$|\s)/g, "")
+    .trim();
+
+  const blocks = attached
+    .map((f) => `<attached_file path="${f.rel}">\n${f.body}\n</attached_file>`)
+    .join("\n\n");
+
+  if (!strippedOnlyPaths) {
+    return `Kullanıcı aşağıdaki yerel dosyayı paylaştı. İçeriğini incele, ne istendiğini özetle veya uygulanması gereken adımları belirt:\n\n${blocks}`;
+  }
+  return `${userInput}\n\n${blocks}`;
 }
 
 export class AgentLoop {
@@ -134,7 +196,8 @@ export class AgentLoop {
   }
 
   async runTurn(userInput) {
-    this.history.addUser(userInput);
+    const enrichedInput = attachReferencedFiles(userInput, this.workdir, this.quiet);
+    this.history.addUser(enrichedInput);
     if (this.history.getMessages().length > 40 && !this._historyWarned && !this.quiet) {
       console.log(ansi.dim("💡 İpucu: Oturum geçmişi uzadı. Belleği tazelemek için '/save <ad>' ardından '/clear' yapabilirsiniz."));
       this._historyWarned = true;

@@ -36,3 +36,33 @@ test("AgentLoop executes tool calls from mocked stream and returns final answer"
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test("AgentLoop auto-attaches quoted local file paths dropped into the prompt", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "locai-attach-"));
+  const planPath = path.join(tmp, "Plan.md");
+  fs.writeFileSync(planPath, "# Proje Planı\n- Adım 1: Test yaz", "utf8");
+  let seenUserMsg = "";
+
+  try {
+    const mockStream = async function* ({ messages }) {
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      seenUserMsg = lastUser?.content || "";
+      yield "Plan.md incelendi: Adım 1 test yazmak.";
+    };
+
+    const agent = new AgentLoop({
+      modelName: "qwen3:1.7b",
+      workdir: tmp,
+      autoConfirm: true,
+      quiet: true,
+      streamFn: mockStream,
+    });
+
+    const out = await agent.runTurn(`'${planPath}' `);
+    assert.match(seenUserMsg, /<attached_file path="Plan\.md">/);
+    assert.match(seenUserMsg, /# Proje Planı/);
+    assert.match(out, /Plan\.md incelendi/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
