@@ -22,7 +22,7 @@ export function stripThinking(text) {
     }
     i = end + CLOSE.length;
   }
-  return out.join("").trim();
+  return out.join("").replaceAll(CLOSE, "").trim();
 }
 
 export async function* filterThinkingStream(chunks) {

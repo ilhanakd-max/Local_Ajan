@@ -16,7 +16,7 @@ import { filterThinkingStream, stripThinking } from "./thinking.js";
 import { WorkLog } from "./workLog.js";
 
 const TOOL_MARKER_RE =
-  /(<\s*\/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<\s*f\s*u\s*n\s*c\s*t\s*i\s*o\s*n|<delegate_task|<write_file|<arg_key|```(?:json)?\s*\{|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task|report_finding|semantic_code_search)\()/i;
+  /(<\s*\/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<\s*f\s*u\s*n\s*c\s*t\s*i\s*o\s*n|<delegate_task|<write_file|<arg_key|```(?:json)?\s*\{|\{\s*"name"\s*:|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task|report_finding|semantic_code_search)\()/i;
 
 const PARTIAL_TAG_RE =
   /(<\s*\/?\s*t[a-zA-Z0-9_\s]*|<tool_?[a-zA-Z0-9_]*|<\|tool_?[a-zA-Z0-9_]*|<\s*\/?\s*f[a-zA-Z0-9_\s]*|\[(?:delegate|write|read|edit|list|glob|grep|git|run)[a-zA-Z0-9_]*)$/i;

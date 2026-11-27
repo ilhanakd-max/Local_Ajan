@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { getSafePath } from "../safety/sandbox.js";
 import {
   checkShellDeleteBypass,
@@ -53,7 +54,19 @@ export class ReadFileTool {
         return `Note: '${targetPath}' is a directory, not a file. Use 'list_dir' next time.\nDirectory contents:\n${listing}`;
       }
 
-      const content = fs.readFileSync(safePath, "utf8");
+      let content;
+      if (path.extname(safePath).toLowerCase() === ".pdf") {
+        try {
+          content = execFileSync("pdftotext", ["-layout", safePath, "-"], {
+            encoding: "utf8",
+            maxBuffer: 5 * 1024 * 1024,
+          });
+        } catch (pdfErr) {
+          return `Error reading PDF '${targetPath}': ${pdfErr.message}. Install 'poppler-utils' (pdftotext) to read PDFs.`;
+        }
+      } else {
+        content = fs.readFileSync(safePath, "utf8");
+      }
       const lines = content.split(/\r?\n/);
       if (start_line !== null || end_line !== null) {
         const s = Math.max(0, (start_line ?? 1) - 1);
