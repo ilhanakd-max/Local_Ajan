@@ -13,6 +13,7 @@ import { prepareContext, truncateToolOutput } from "./context.js";
 import { extractAllToolCalls } from "./parser.js";
 import { getSystemPrompt } from "./prompt.js";
 import { filterThinkingStream, stripThinking } from "./thinking.js";
+import { WorkLog } from "./workLog.js";
 
 const TOOL_MARKER_RE =
   /(<\s*\/?\s*t\s*o\s*o\s*l|<tool_call|<tool_|<\|tool_call_start|<\s*f\s*u\s*n\s*c\s*t\s*i\s*o\s*n|<delegate_task|<write_file|<arg_key|```(?:json)?\s*\{|\[(?:write_file|read_file|edit_file|list_dir|glob|grep|git_status|git_diff|run_shell|delegate_task|report_finding|semantic_code_search)\()/i;
@@ -122,6 +123,7 @@ export class AgentLoop {
     registry.setWorkdir(this.workdir);
     this.profile = getProfileForModel(modelName);
     this.history = new ChatHistory(this._buildPrompt());
+    this.workLog = new WorkLog(this.workdir);
   }
 
   _buildPrompt() {
@@ -198,6 +200,7 @@ export class AgentLoop {
   async runTurn(userInput) {
     const enrichedInput = attachReferencedFiles(userInput, this.workdir, this.quiet);
     this.history.addUser(enrichedInput);
+    this.workLog.add("GÖREV", String(userInput || "").slice(0, 160));
     if (this.history.getMessages().length > 40 && !this._historyWarned && !this.quiet) {
       console.log(ansi.dim("💡 İpucu: Oturum geçmişi uzadı. Belleği tazelemek için '/save <ad>' ardından '/clear' yapabilirsiniz."));
       this._historyWarned = true;
@@ -210,7 +213,14 @@ export class AgentLoop {
     let finalResponse = "";
 
     for (let step = 0; step < this.maxSteps; step++) {
-      const prepared = prepareContext(this.history.getMessages(), this.profile.num_ctx);
+      const workLogSummary = this.workLog.formatForPrompt(12);
+      const prepared = prepareContext(
+        this.history.getMessages(),
+        this.profile.num_ctx,
+        0.35,
+        workLogSummary,
+        step >= 3
+      );
       let rawOutput = "";
       let printedLen = 0;
       let tokenCount = 0;
@@ -369,6 +379,9 @@ export class AgentLoop {
 
       if (!calls.length) {
         finalResponse = cleaned;
+        if (finalResponse.trim()) {
+          this.workLog.add("YANIT", finalResponse.slice(0, 160));
+        }
         break;
       }
 
@@ -424,6 +437,8 @@ export class AgentLoop {
         }
 
         const truncated = truncateToolOutput(String(result ?? ""), this.profile.max_tool_output);
+        const previewLine = truncated.split("\n")[0].slice(0, 120);
+        this.workLog.add(tool.name, `${formatArgsPreview(call.args || {})} -> ${previewLine}`);
         this.history.addToolResult(
           tool.name,
           `${truncated}\n(Kalan başka işlem yoksa görevi bitir; kodu tekrar yazma, 1 kısa cümleyle ne yapıldığını söyle ve dur.)`

@@ -46,6 +46,7 @@ REPL Komutları:
   /load <ad>             Oturumu yükle
   /sessions              Kayıtlı oturumları listele
   /ponytail              Ponytail (minimalist) modunu aç/kapat
+  /log [clear]           Çalışma günlüğünü göster (veya temizle)
   /exit                  Çıkış yap
 `);
 }
@@ -125,6 +126,23 @@ async function handleSlashCommand(line, agent, config, pauseReadline) {
   if (cmd === "/ponytail") {
     agent.setPonytailMode(!agent.ponytailMode);
     console.log(ansi.green(`✓ Ponytail modu: ${agent.ponytailMode ? "Açık" : "Kapalı"}`));
+    return "HANDLED";
+  }
+  if (cmd === "/log") {
+    if (arg.toLowerCase() === "clear") {
+      agent.workLog.clear();
+      console.log(ansi.green("✓ Çalışma günlüğü temizlendi."));
+      return "HANDLED";
+    }
+    const entries = agent.workLog.getEntries(20);
+    if (!entries.length) {
+      console.log(ansi.dim("  (Çalışma günlüğü henüz boş)"));
+      return "HANDLED";
+    }
+    console.log(ansi.boldCyan("Çalışma Günlüğü (son 20 kayıt):"));
+    for (const e of entries) {
+      console.log(`  ${ansi.gray(`[${e.ts}]`)} ${ansi.boldYellow(`[${e.kind}]`)} ${e.summary}`);
+    }
     return "HANDLED";
   }
   if (cmd === "/save") {
