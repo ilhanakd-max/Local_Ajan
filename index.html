@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LocAi v0.4.0-js — Küçük Modeller. Gerçek Ajanlar.</title>
-  <meta name="description" content="Sıfır bağımlılıklı Node.js yerel AI kodlama ajanı. Ollama, Qwen3, OpenRouter ve Groq destekli, OpenCode tarzı yapıştırma ve WorkLog hafızalı CLI." />
+  <title>LocAi v0.4.0-js — Small Models. Real Agents.</title>
+  <meta name="description" content="Zero-dependency Node.js local AI coding agent. Supports Ollama, Qwen3, OpenRouter, and Groq with OpenCode-style paste and WorkLog memory." />
   <link rel="icon" type="image/png" href="assets/locai-icon.png" />
   <style>
     :root {
@@ -39,13 +39,38 @@
     }
     .nav {
       display: flex; align-items: center; justify-content: space-between;
-      height: 64px;
+      height: 64px; gap: 16px;
     }
     .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.1rem; color: var(--text); }
     .brand img { width: 32px; height: 32px; border-radius: 8px; }
-    .nav-links { display: flex; gap: 22px; font-size: 0.95rem; }
+    .nav-right { display: flex; align-items: center; gap: 20px; }
+    .nav-links { display: flex; gap: 20px; font-size: 0.95rem; }
     .nav-links a { color: var(--muted); }
     .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    .lang-switch {
+      display: inline-flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .lang-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .lang-btn.active {
+      background: var(--cyan);
+      color: #06101d;
+    }
 
     .hero { padding: 72px 0 48px; text-align: center; }
     .badge {
@@ -136,6 +161,10 @@
       border-top: 1px solid var(--border);
       padding: 32px 0; text-align: center; color: var(--muted); font-size: 0.9rem;
     }
+
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -145,67 +174,209 @@
         <img src="assets/locai-icon.png" alt="LocAi" />
         <span>LocAi <span style="color:var(--cyan);font-size:0.85rem;">v0.4.0-js</span></span>
       </div>
-      <nav class="nav-links">
-        <a href="#ozellikler">Özellikler</a>
-        <a href="#kurulum">Kurulum</a>
-        <a href="#kullanim">Kullanım</a>
-        <a href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener">GitHub</a>
-      </nav>
+      <div class="nav-right">
+        <nav class="nav-links">
+          <a href="#features" data-i18n="nav_features">Features</a>
+          <a href="#install" data-i18n="nav_install">Install</a>
+          <a href="#usage" data-i18n="nav_usage">Usage</a>
+          <a href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button class="lang-btn active" data-lang="en" type="button">EN</button>
+          <button class="lang-btn" data-lang="tr" type="button">TR</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="container">
     <section class="hero">
-      <div class="badge">⚡ Saf Node.js 22+ ESM • Sıfır Harici Bağımlılık</div>
-      <h1>Küçük Yerel Modeller.<br />Gerçek Kodlama Ajanları.</h1>
-      <p class="subtitle">
-        LocAi v0.4.0-js; Ollama, OpenRouter, Groq ve NVIDIA NIM modelleriyle çalışan,
-        OpenCode tarzı yapıştırma, otomatik dosya ekleme, PDF okuma ve WorkLog hafızasına sahip
-        hafif yerel AI terminal ajanıdır.
+      <div class="badge" data-i18n="badge">⚡ Pure Node.js 22+ ESM • Zero External Dependencies</div>
+      <h1 data-i18n-html="hero_title">Small Local Models.<br />Real Coding Agents.</h1>
+      <p class="subtitle" data-i18n="hero_subtitle">
+        LocAi v0.4.0-js is a lightweight local AI terminal coding agent supporting Ollama, OpenRouter, Groq, and NVIDIA NIM —
+        built with OpenCode-style paste, drag-and-drop file attachment, PDF reading, and persistent WorkLog memory.
       </p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="#kurulum">Hemen Kur (30 sn)</a>
-        <a class="btn" href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener">GitHub Reposu</a>
+        <a class="btn btn-primary" href="#install" data-i18n="cta_install">Quick Install (30s)</a>
+        <a class="btn" href="https://github.com/ilhanakd-max/Local_Ajan/releases/tag/v0.4.0-js" target="_blank" rel="noopener" data-i18n="cta_release">Release v0.4.0-js</a>
+        <a class="btn" href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener" data-i18n="cta_github">GitHub Repo</a>
       </div>
-      <img class="hero-img" src="assets/nodejs_cli_preview.png" alt="LocAi Node.js CLI Arayüzü" />
+      <img class="hero-img" src="assets/nodejs_cli_preview.png" alt="LocAi Node.js CLI Preview" />
     </section>
 
-    <section id="ozellikler">
-      <h2>Öne Çıkan Özellikler</h2>
-      <p class="section-desc">Küçük modellerin (0.6B–4B) gerçek projelerde hata yapmadan çalışması için tasarlandı.</p>
+    <section id="features">
+      <h2 data-i18n="feat_title">Key Features</h2>
+      <p class="section-desc" data-i18n="feat_desc">Engineered so small local models (0.6B–4B) can work reliably on real projects.</p>
       <div class="grid">
         <div class="card">
-          <h3>📋 OpenCode Tarzı Yapıştırma</h3>
-          <p>Çok satırlı metinleri terminale yapıştırdığınızda erken gönderim yapmaz; <code>[Pasted #1 ~N lines]</code> pill'i olarak gösterir ve Enter'da tam metne açar.</p>
+          <h3 data-i18n="f1_title">📋 OpenCode-Style Paste</h3>
+          <p data-i18n-html="f1_desc">Multi-line or long pastes never auto-submit on newlines; they collapse into a <code>[Pasted #1 ~N lines]</code> pill and expand cleanly on Enter.</p>
         </div>
         <div class="card">
-          <h3>🧠 Kalıcı Çalışma Günlüğü (WorkLog)</h3>
-          <p>Her görev ve araç adımını proje klasöründeki <code>.locai/worklog.jsonl</code> dosyasına kaydeder; bağlam kırpıldığında otomatik hatırlatır.</p>
+          <h3 data-i18n="f2_title">🧠 Persistent WorkLog Memory</h3>
+          <p data-i18n-html="f2_desc">Saves every goal and tool step to <code>.locai/worklog.jsonl</code> inside your project folder and auto-injects it when context gets pruned.</p>
         </div>
         <div class="card">
-          <h3>📎 Sürükle-Bırak & PDF Desteği</h3>
-          <p>Terminale bıraktığınız dosya yollarını otomatik okuyup bağlama ekler. <code>.pdf</code> dosyaları <code>pdftotext</code> ile doğrudan metne çevrilir.</p>
+          <h3 data-i18n="f3_title">📎 Drag-and-Drop & PDF Support</h3>
+          <p data-i18n-html="f3_desc">Drop any local file path into the prompt to auto-attach its contents. <code>.pdf</code> files are extracted automatically via <code>pdftotext</code>.</p>
         </div>
         <div class="card">
-          <h3>🛠️ Araç Onarımı & Güvenlik</h3>
-          <p>Bozuk XML/JSON araç çağrılarını onarır (<code>repair.js</code>), çalışma dizini sandbox'ı uygular, <code>edit_file</code> hatalarında en yakın satırları gösterir.</p>
+          <h3 data-i18n="f4_title">🛠️ Tool Repair & Sandbox</h3>
+          <p data-i18n-html="f4_desc">Repairs malformed XML/JSON tool calls (<code>repair.js</code>), enforces workspace sandboxing, and shows closest lines when <code>edit_file</code> misses.</p>
         </div>
         <div class="card">
-          <h3>⚡ Otomatik Onay & Akıcı REPL</h3>
-          <p>Varsayılan otomatik onay ile kesintisiz çalışır, işlem bitince yeni komut bekler ve <code>/exit</code> komutuyla temiz şekilde kapanır.</p>
+          <h3 data-i18n="f5_title">⚡ Auto-Confirm & Smooth REPL</h3>
+          <p data-i18n-html="f5_desc">Auto-approves tool actions by default (disable with <code>--no-auto-confirm</code>), waits for your next command after completion, and exits cleanly with <code>/exit</code>.</p>
         </div>
         <div class="card">
-          <h3>🔀 Ctrl+P Model Seçici</h3>
-          <p>Ollama yerel modelleri ile OpenRouter, Groq, NVIDIA NIM ve NineRouter bulut modelleri arasında ok tuşlarıyla anında geçiş yapın.</p>
+          <h3 data-i18n="f6_title">🔀 Ctrl+P Model Selector</h3>
+          <p data-i18n="f6_desc">Switch seamlessly between local Ollama models and OpenRouter, Groq, NVIDIA NIM, or NineRouter using arrow keys.</p>
         </div>
       </div>
     </section>
 
-    <section id="kurulum">
-      <h2>Nasıl Kurulur?</h2>
-      <p class="section-desc">Önce sisteminizde <strong>Node.js 22+</strong> kurulu olmalıdır (<code>node -v</code>). Yoksa aşağıdaki adımla kurup devam edebilirsiniz.</p>
-      <pre><span class="code-comment"># 0. Sisteminizde Node.js 22+ yoksa önce kurun:</span>
-<span class="code-comment">#    Linux:   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && nvm install 22</span>
+    <section id="install">
+      <h2 data-i18n="inst_title">Installation</h2>
+      <p class="section-desc" data-i18n-html="inst_desc">Make sure <strong>Node.js 22+</strong> is installed first (<code>node -v</code>). If not, install it below and link the CLI.</p>
+      <pre id="install-code"><span class="code-comment"># 0. Install Node.js 22+ first if not already installed:</span>
+<span class="code-comment">#    Linux:   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash &amp;&amp; nvm install 22</span>
+<span class="code-comment">#    macOS:   brew install node@22</span>
+<span class="code-comment">#    Windows: winget install OpenJS.NodeJS.LTS  (or nodejs.org)</span>
+
+<span class="code-comment"># 1. Clone the repository and link the global CLI</span>
+git clone https://github.com/ilhanakd-max/Local_Ajan.git
+cd Local_Ajan
+npm link
+
+<span class="code-comment"># 2. Verify version and pull a local model</span>
+locai --version
+ollama pull qwen3:1.7b
+
+<span class="code-comment"># 3. Launch in any project directory</span>
+cd /path/to/your/project
+locai</pre>
+      <img class="flow-img" src="assets/nodejs_setup_flow.png" alt="LocAi Setup & Architecture Flow" />
+    </section>
+
+    <section id="usage">
+      <h2 data-i18n="usage_title">Usage &amp; REPL Commands</h2>
+      <p class="section-desc" data-i18n="usage_desc">Essential shortcuts and slash commands available inside the interactive session:</p>
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="th_cmd">Command / Shortcut</th>
+            <th data-i18n="th_desc">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Ctrl+P</code></td><td data-i18n="c_ctrlp">Open interactive arrow-key model selector</td></tr>
+          <tr><td><code>/model [name]</code></td><td data-i18n="c_model">Switch active model or list available models</td></tr>
+          <tr><td><code>/log</code> / <code>/log clear</code></td><td data-i18n-html="c_log">View or clear project work log (<code>.locai/worklog.jsonl</code>)</td></tr>
+          <tr><td><code>/ponytail</code></td><td data-i18n="c_ponytail">Toggle minimalist coding mode (zero over-engineering)</td></tr>
+          <tr><td><code>/save &lt;name&gt;</code> / <code>/load &lt;name&gt;</code></td><td data-i18n="c_session">Save or restore conversation sessions</td></tr>
+          <tr><td><code>/exit</code></td><td data-i18n="c_exit">Exit the CLI cleanly</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <span data-i18n="footer_text">LocAi v0.4.0-js • MIT License •</span>
+      <a href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+
+  <script>
+    const I18N = {
+      en: {
+        _title: "LocAi v0.4.0-js — Small Models. Real Agents.",
+        nav_features: "Features",
+        nav_install: "Install",
+        nav_usage: "Usage",
+        badge: "⚡ Pure Node.js 22+ ESM • Zero External Dependencies",
+        hero_title: "Small Local Models.<br />Real Coding Agents.",
+        hero_subtitle:
+          "LocAi v0.4.0-js is a lightweight local AI terminal coding agent supporting Ollama, OpenRouter, Groq, and NVIDIA NIM — built with OpenCode-style paste, drag-and-drop file attachment, PDF reading, and persistent WorkLog memory.",
+        cta_install: "Quick Install (30s)",
+        cta_release: "Release v0.4.0-js",
+        cta_github: "GitHub Repo",
+        feat_title: "Key Features",
+        feat_desc: "Engineered so small local models (0.6B–4B) can work reliably on real projects.",
+        f1_title: "📋 OpenCode-Style Paste",
+        f1_desc: "Multi-line or long pastes never auto-submit on newlines; they collapse into a <code>[Pasted #1 ~N lines]</code> pill and expand cleanly on Enter.",
+        f2_title: "🧠 Persistent WorkLog Memory",
+        f2_desc: "Saves every goal and tool step to <code>.locai/worklog.jsonl</code> inside your project folder and auto-injects it when context gets pruned.",
+        f3_title: "📎 Drag-and-Drop & PDF Support",
+        f3_desc: "Drop any local file path into the prompt to auto-attach its contents. <code>.pdf</code> files are extracted automatically via <code>pdftotext</code>.",
+        f4_title: "🛠️ Tool Repair & Sandbox",
+        f4_desc: "Repairs malformed XML/JSON tool calls (<code>repair.js</code>), enforces workspace sandboxing, and shows closest lines when <code>edit_file</code> misses.",
+        f5_title: "⚡ Auto-Confirm & Smooth REPL",
+        f5_desc: "Auto-approves tool actions by default (disable with <code>--no-auto-confirm</code>), waits for your next command after completion, and exits cleanly with <code>/exit</code>.",
+        f6_title: "🔀 Ctrl+P Model Selector",
+        f6_desc: "Switch seamlessly between local Ollama models and OpenRouter, Groq, NVIDIA NIM, or NineRouter using arrow keys.",
+        inst_title: "Installation",
+        inst_desc: "Make sure <strong>Node.js 22+</strong> is installed first (<code>node -v</code>). If not, install it below and link the CLI.",
+        install_code: `<span class="code-comment"># 0. Install Node.js 22+ first if not already installed:</span>
+<span class="code-comment">#    Linux:   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash &amp;&amp; nvm install 22</span>
+<span class="code-comment">#    macOS:   brew install node@22</span>
+<span class="code-comment">#    Windows: winget install OpenJS.NodeJS.LTS  (or nodejs.org)</span>
+
+<span class="code-comment"># 1. Clone the repository and link the global CLI</span>
+git clone https://github.com/ilhanakd-max/Local_Ajan.git
+cd Local_Ajan
+npm link
+
+<span class="code-comment"># 2. Verify version and pull a local model</span>
+locai --version
+ollama pull qwen3:1.7b
+
+<span class="code-comment"># 3. Launch in any project directory</span>
+cd /path/to/your/project
+locai`,
+        usage_title: "Usage & REPL Commands",
+        usage_desc: "Essential shortcuts and slash commands available inside the interactive session:",
+        th_cmd: "Command / Shortcut",
+        th_desc: "Description",
+        c_ctrlp: "Open interactive arrow-key model selector",
+        c_model: "Switch active model or list available models",
+        c_log: "View or clear project work log (<code>.locai/worklog.jsonl</code>)",
+        c_ponytail: "Toggle minimalist coding mode (zero over-engineering)",
+        c_session: "Save or restore conversation sessions",
+        c_exit: "Exit the CLI cleanly",
+        footer_text: "LocAi v0.4.0-js • MIT License •",
+      },
+      tr: {
+        _title: "LocAi v0.4.0-js — Küçük Modeller. Gerçek Ajanlar.",
+        nav_features: "Özellikler",
+        nav_install: "Kurulum",
+        nav_usage: "Kullanım",
+        badge: "⚡ Saf Node.js 22+ ESM • Sıfır Harici Bağımlılık",
+        hero_title: "Küçük Yerel Modeller.<br />Gerçek Kodlama Ajanları.",
+        hero_subtitle:
+          "LocAi v0.4.0-js; Ollama, OpenRouter, Groq ve NVIDIA NIM modelleriyle çalışan, OpenCode tarzı yapıştırma, otomatik dosya ekleme, PDF okuma ve WorkLog hafızasına sahip hafif yerel AI terminal ajanıdır.",
+        cta_install: "Hemen Kur (30 sn)",
+        cta_release: "Sürüm v0.4.0-js",
+        cta_github: "GitHub Reposu",
+        feat_title: "Öne Çıkan Özellikler",
+        feat_desc: "Küçük modellerin (0.6B–4B) gerçek projelerde hata yapmadan çalışması için tasarlandı.",
+        f1_title: "📋 OpenCode Tarzı Yapıştırma",
+        f1_desc: "Çok satırlı metinleri terminale yapıştırdığınızda erken gönderim yapmaz; <code>[Pasted #1 ~N lines]</code> pill'i olarak gösterir ve Enter'da tam metne açar.",
+        f2_title: "🧠 Kalıcı Çalışma Günlüğü (WorkLog)",
+        f2_desc: "Her görev ve araç adımını proje klasöründeki <code>.locai/worklog.jsonl</code> dosyasına kaydeder; bağlam kırpıldığında otomatik hatırlatır.",
+        f3_title: "📎 Sürükle-Bırak & PDF Desteği",
+        f3_desc: "Terminale bıraktığınız dosya yollarını otomatik okuyup bağlama ekler. <code>.pdf</code> dosyaları <code>pdftotext</code> ile doğrudan metne çevrilir.",
+        f4_title: "🛠️ Araç Onarımı & Güvenlik",
+        f4_desc: "Bozuk XML/JSON araç çağrılarını onarır (<code>repair.js</code>), çalışma dizini sandbox'ı uygular, <code>edit_file</code> hatalarında en yakın satırları gösterir.",
+        f5_title: "⚡ Otomatik Onay & Akıcı REPL",
+        f5_desc: "Varsayılan otomatik onay ile kesintisiz çalışır (<code>--no-auto-confirm</code> ile kapatılabilir), işlem bitince yeni komut bekler ve <code>/exit</code> ile temiz şekilde kapanır.",
+        f6_title: "🔀 Ctrl+P Model Seçici",
+        f6_desc: "Ollama yerel modelleri ile OpenRouter, Groq, NVIDIA NIM ve NineRouter bulut modelleri arasında ok tuşlarıyla anında geçiş yapın.",
+        inst_title: "Nasıl Kurulur?",
+        inst_desc: "Önce sisteminizde <strong>Node.js 22+</strong> kurulu olmalıdır (<code>node -v</code>). Yoksa aşağıdaki adımla kurup devam edebilirsiniz.",
+        install_code: `<span class="code-comment"># 0. Sisteminizde Node.js 22+ yoksa önce kurun:</span>
+<span class="code-comment">#    Linux:   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash &amp;&amp; nvm install 22</span>
 <span class="code-comment">#    macOS:   brew install node@22</span>
 <span class="code-comment">#    Windows: winget install OpenJS.NodeJS.LTS  (veya nodejs.org)</span>
 
@@ -220,33 +391,53 @@ ollama pull qwen3:1.7b
 
 <span class="code-comment"># 3. Herhangi bir proje klasöründe başlat</span>
 cd /proje/klasorun
-locai</pre>
-      <img class="flow-img" src="assets/nodejs_setup_flow.png" alt="LocAi Kurulum ve Kullanım Akışı" />
-    </section>
+locai`,
+        usage_title: "Kullanım ve REPL Komutları",
+        usage_desc: "Etkileşimli oturum içinde kullanabileceğiniz başlıca komutlar:",
+        th_cmd: "Komut / Kısayol",
+        th_desc: "Açıklama",
+        c_ctrlp: "İnteraktif ok tuşlu model seçiciyi açar",
+        c_model: "Aktif modeli değiştirir veya kullanılabilir modelleri listeler",
+        c_log: "Proje içi çalışma günlüğünü (<code>.locai/worklog.jsonl</code>) gösterir veya temizler",
+        c_ponytail: "Minimalist kodlama modunu (sıfır aşırı mühendislik) açar/kapatır",
+        c_session: "Oturumu kaydeder veya geri yükler",
+        c_exit: "Uygulamadan temiz şekilde çıkış yapar",
+        footer_text: "LocAi v0.4.0-js • MIT Lisansı •",
+      },
+    };
 
-    <section id="kullanim">
-      <h2>Kullanım ve REPL Komutları</h2>
-      <p class="section-desc">Etkileşimli oturum içinde kullanabileceğiniz başlıca komutlar:</p>
-      <table>
-        <thead>
-          <tr><th>Komut / Kısayol</th><th>Açıklama</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><code>Ctrl+P</code></td><td>İnteraktif ok tuşlu model seçiciyi açar</td></tr>
-          <tr><td><code>/model [ad]</code></td><td>Aktif modeli değiştirir veya kullanılabilir modelleri listeler</td></tr>
-          <tr><td><code>/log</code> / <code>/log clear</code></td><td>Proje içi çalışma günlüğünü (<code>.locai/worklog.jsonl</code>) gösterir veya temizler</td></tr>
-          <tr><td><code>/ponytail</code></td><td>Minimalist kodlama modunu (sıfır aşırı mühendislik) açar/kapatır</td></tr>
-          <tr><td><code>/save &lt;ad&gt;</code> / <code>/load &lt;ad&gt;</code></td><td>Oturumu kaydeder veya geri yükler</td></tr>
-          <tr><td><code>/exit</code></td><td>Uygulamadan temiz şekilde çıkış yapar</td></tr>
-        </tbody>
-      </table>
-    </section>
-  </main>
+    function applyLang(lang) {
+      const dict = I18N[lang] || I18N.en;
+      document.documentElement.lang = lang;
+      document.title = dict._title;
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (dict[key] !== undefined) el.textContent = dict[key];
+      });
+      document.querySelectorAll("[data-i18n-html]").forEach((el) => {
+        const key = el.getAttribute("data-i18n-html");
+        if (dict[key] !== undefined) el.innerHTML = dict[key];
+      });
+      const pre = document.getElementById("install-code");
+      if (pre && dict.install_code) pre.innerHTML = dict.install_code;
+      document.querySelectorAll(".lang-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.getAttribute("data-lang") === lang);
+      });
+      try {
+        localStorage.setItem("locai_lang", lang);
+      } catch {}
+    }
 
-  <footer>
-    <div class="container">
-      LocAi v0.4.0-js • MIT Lisansı • <a href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener">GitHub</a>
-    </div>
-  </footer>
+    document.querySelectorAll(".lang-btn").forEach((btn) => {
+      btn.addEventListener("click", () => applyLang(btn.getAttribute("data-lang")));
+    });
+
+    let initialLang = "en";
+    try {
+      const saved = localStorage.getItem("locai_lang");
+      if (saved === "tr" || saved === "en") initialLang = saved;
+    } catch {}
+    applyLang(initialLang);
+  </script>
 </body>
 </html>
