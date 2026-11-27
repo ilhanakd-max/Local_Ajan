@@ -24,7 +24,7 @@ const PROVIDERS = {
 export function resolveProvider(modelName, config = {}) {
   for (const [prefix, info] of Object.entries(PROVIDERS)) {
     if (modelName.startsWith(prefix)) {
-      const apiModel = modelName.slice(prefix.length);
+      const apiModel = modelName === "openrouter/free" ? "openrouter/free" : modelName.slice(prefix.length);
       let baseUrl = info.baseUrl;
       let apiKey = process.env[info.envKey] || "";
       if (prefix === "openrouter/") apiKey = apiKey || config.openrouter_api_key || "";
