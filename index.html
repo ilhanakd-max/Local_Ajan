@@ -202,7 +202,7 @@
         <a class="btn" href="https://github.com/ilhanakd-max/Local_Ajan/releases/tag/v0.4.0-js" target="_blank" rel="noopener" data-i18n="cta_release">Release v0.4.0-js</a>
         <a class="btn" href="https://github.com/ilhanakd-max/Local_Ajan" target="_blank" rel="noopener" data-i18n="cta_github">GitHub Repo</a>
       </div>
-      <img class="hero-img" src="assets/nodejs_cli_preview.png" alt="LocAi Node.js CLI Preview" />
+      <img id="hero-img" class="hero-img" src="assets/nodejs_cli_preview_en.png" alt="LocAi Node.js CLI Preview" />
     </section>
 
     <section id="features">
@@ -256,7 +256,7 @@ ollama pull qwen3:1.7b
 <span class="code-comment"># 3. Launch in any project directory</span>
 cd /path/to/your/project
 locai</pre>
-      <img class="flow-img" src="assets/nodejs_setup_flow.png" alt="LocAi Setup & Architecture Flow" />
+      <img id="flow-img" class="flow-img" src="assets/nodejs_setup_flow_en.png" alt="LocAi Setup & Architecture Flow" />
     </section>
 
     <section id="usage">
@@ -346,6 +346,8 @@ locai`,
         c_session: "Save or restore conversation sessions",
         c_exit: "Exit the CLI cleanly",
         footer_text: "LocAi v0.4.0-js • MIT License •",
+        hero_img: "assets/nodejs_cli_preview_en.png",
+        flow_img: "assets/nodejs_setup_flow_en.png",
       },
       tr: {
         _title: "LocAi v0.4.0-js — Küçük Modeller. Gerçek Ajanlar.",
@@ -403,6 +405,8 @@ locai`,
         c_session: "Oturumu kaydeder veya geri yükler",
         c_exit: "Uygulamadan temiz şekilde çıkış yapar",
         footer_text: "LocAi v0.4.0-js • MIT Lisansı •",
+        hero_img: "assets/nodejs_cli_preview.png",
+        flow_img: "assets/nodejs_setup_flow.png",
       },
     };
 
@@ -420,6 +424,10 @@ locai`,
       });
       const pre = document.getElementById("install-code");
       if (pre && dict.install_code) pre.innerHTML = dict.install_code;
+      const heroImg = document.getElementById("hero-img");
+      if (heroImg && dict.hero_img) heroImg.src = dict.hero_img;
+      const flowImg = document.getElementById("flow-img");
+      if (flowImg && dict.flow_img) flowImg.src = dict.flow_img;
       document.querySelectorAll(".lang-btn").forEach((btn) => {
         btn.classList.toggle("active", btn.getAttribute("data-lang") === lang);
       });
