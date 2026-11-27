@@ -34,11 +34,32 @@ export async function* chatStreamOllama({
     payload.think = think;
   }
 
-  const res = await fetch(`${host.replace(/\/$/, "")}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const url = `${host.replace(/\/$/, "")}/api/chat`;
+  let res;
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Connection: "close",
+        },
+        body: JSON.stringify(payload),
+      });
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+      }
+    }
+  }
+  if (lastErr) {
+    const detail = lastErr?.cause?.code || lastErr?.cause?.message || lastErr?.message || String(lastErr);
+    throw new Error(`Ollama bağlantı hatası (${url}): ${detail}`);
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
