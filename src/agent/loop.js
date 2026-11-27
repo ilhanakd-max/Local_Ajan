@@ -246,6 +246,9 @@ export class AgentLoop {
     const extraNames = this.workerModel ? new Set(["delegate_task"]) : null;
     const retryLimit = this.profile.parse_retry_limit ?? 2;
     let parseFailCount = 0;
+    let emptyWriteNudgeCount = 0;
+    let hasWrittenFile = false;
+    let ranMkdir = false;
     let finalResponse = "";
 
     for (let step = 0; step < this.maxSteps; step++) {
@@ -428,6 +431,18 @@ export class AgentLoop {
       }
 
       if (!calls.length) {
+        const claimsFileCreated =
+          !hasWrittenFile &&
+          (ranMkdir ||
+            (/(?:oluşturuldu|yerleştirildi|kaydedildi|yazıldı|created|saved|wrote)\b/i.test(cleaned) &&
+              /\.(?:html|css|js|ts|py|json|md|txt)\b/i.test(cleaned)));
+        if (claimsFileCreated && emptyWriteNudgeCount < 2) {
+          emptyWriteNudgeCount++;
+          this.history.addUser(
+            "HATA: Henüz hiçbir dosya yazmadın (`write_file` veya `edit_file` hiç çağrılmadı). Sadece klasör oluşturmak dosyaları yazmaz. Şimdi `write_file` aracını kullanarak bahsettiğin dosyaları gerçekten oluştur!"
+          );
+          continue;
+        }
         finalResponse = cleaned;
         if (finalResponse.trim()) {
           this.workLog.add("YANIT", finalResponse.slice(0, 160));
@@ -482,6 +497,13 @@ export class AgentLoop {
         let result;
         try {
           result = await tool.run(call.args || {});
+          if (tool.name === "write_file" || tool.name === "edit_file") {
+            if (!/^(Error|Hata)/i.test(String(result ?? ""))) {
+              hasWrittenFile = true;
+            }
+          } else if (tool.name === "run_shell" && /\bmkdir\b/i.test(String(call.args?.command || ""))) {
+            ranMkdir = true;
+          }
         } catch (err) {
           result = `Error executing '${tool.name}': ${err.message}`;
         }

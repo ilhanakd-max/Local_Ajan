@@ -90,3 +90,36 @@ test("AgentLoop.setWorkerModel toggles orchestrator mode and updates system prom
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test("AgentLoop nudges model when it runs mkdir and claims files were created without write_file", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "locai-mkdir-nudge-"));
+  let turn = 0;
+  try {
+    const mockStream = async function* () {
+      turn += 1;
+      if (turn === 1) {
+        yield '<tool_call>{"name":"run_shell","arguments":{"command":"mkdir app_dir"}}</tool_call>';
+      } else if (turn === 2) {
+        yield "app_dir klasörü oluşturuldu ve içine index.html yerleştirildi.";
+      } else if (turn === 3) {
+        yield '<tool_call>{"name":"write_file","arguments":{"path":"app_dir/index.html","content":"<h1>OK</h1>"}}</tool_call>';
+      } else {
+        yield "app_dir/index.html dosyası gerçekten oluşturuldu.";
+      }
+    };
+
+    const agent = new AgentLoop({
+      modelName: "gemma4:4b",
+      workdir: tmp,
+      autoConfirm: true,
+      quiet: true,
+      streamFn: mockStream,
+    });
+
+    const out = await agent.runTurn("app_dir içine index.html yap");
+    assert.equal(fs.readFileSync(path.join(tmp, "app_dir", "index.html"), "utf8"), "<h1>OK</h1>");
+    assert.match(out, /oluşturuldu/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
