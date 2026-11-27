@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getProfileForModel } from "../llm/modelProfiles.js";
+import {
+  getProfileForModel,
+  resolveDynamicNumCtx,
+  scanWorkspaceSize,
+} from "../llm/modelProfiles.js";
 import { chatStreamOllama } from "../llm/ollamaClient.js";
 import { chatStreamOpenAICompat, resolveProvider } from "../llm/openaiCompatClient.js";
 import { registry } from "../tools/index.js";
@@ -122,6 +126,12 @@ export class AgentLoop {
 
     registry.setWorkdir(this.workdir);
     this.profile = getProfileForModel(modelName);
+    this.workspaceStats = scanWorkspaceSize(this.workdir);
+    this.activeNumCtx = resolveDynamicNumCtx({
+      modelName: this.modelName,
+      baseNumCtx: this.profile.num_ctx,
+      workspaceStats: this.workspaceStats,
+    });
     this.history = new ChatHistory(this._buildPrompt());
     this.workLog = new WorkLog(this.workdir);
   }
@@ -137,6 +147,11 @@ export class AgentLoop {
 
   refreshPrompt() {
     this.profile = getProfileForModel(this.modelName);
+    this.activeNumCtx = resolveDynamicNumCtx({
+      modelName: this.modelName,
+      baseNumCtx: this.profile.num_ctx,
+      workspaceStats: this.workspaceStats,
+    });
     this.history.updateSystemPrompt(this._buildPrompt());
   }
 
@@ -152,7 +167,12 @@ export class AgentLoop {
 
   async *_streamModel(messages) {
     if (this.streamFn) {
-      yield* this.streamFn({ model: this.modelName, messages, profile: this.profile });
+      yield* this.streamFn({
+        model: this.modelName,
+        messages,
+        profile: this.profile,
+        numCtx: this.activeNumCtx,
+      });
       return;
     }
 
@@ -171,7 +191,7 @@ export class AgentLoop {
       model: this.modelName,
       messages,
       host: this.host,
-      numCtx: this.profile.num_ctx,
+      numCtx: this.activeNumCtx,
       temperature: this.profile.temperature,
       repeatPenalty: this.profile.repeat_penalty,
       numPredict: this.profile.num_predict || 0,
@@ -217,9 +237,23 @@ export class AgentLoop {
 
     for (let step = 0; step < this.maxSteps; step++) {
       const workLogSummary = this.workLog.formatForPrompt(12);
+      const msgs = this.history.getMessages();
+      const messagesChars = msgs.reduce((acc, m) => acc + (m.content?.length || 0), 0) + workLogSummary.length;
+      const nextCtx = resolveDynamicNumCtx({
+        modelName: this.modelName,
+        baseNumCtx: this.profile.num_ctx,
+        workspaceStats: this.workspaceStats,
+        messagesChars,
+      });
+      if (nextCtx > this.activeNumCtx) {
+        if (!this.quiet) {
+          console.log(ansi.dim(`  ⚡ Bağlam penceresi otomatik artırıldı: ${this.activeNumCtx} → ${nextCtx} token`));
+        }
+        this.activeNumCtx = nextCtx;
+      }
       const prepared = prepareContext(
-        this.history.getMessages(),
-        this.profile.num_ctx,
+        msgs,
+        this.activeNumCtx,
         0.35,
         workLogSummary,
         step >= 3
